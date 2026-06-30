@@ -358,12 +358,15 @@ const PHASE1_END_MS =
 ═══════════════════════════════════════════════════════════════════════════*/
 
 function ProductCard({ item }: { item: StackItem }) {
+  const colors = useContext(LuxColorCtx);
+  const isDark  = colors.bg === (C as ColorTokens).bg;
   return (
     <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", overflow: "hidden" }}>
       <img src={item.imageUrl} alt="" aria-hidden="true" fetchPriority="high" decoding="async"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", filter: "brightness(0.75) saturate(0.82)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 38%)", borderRadius: "inherit" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.40) 42%, transparent 72%)", borderRadius: "inherit" }} />
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center",
+          filter: isDark ? "brightness(0.75) saturate(0.82)" : "none" }} />
+      {isDark && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 38%)", borderRadius: "inherit" }} />}
+      {isDark && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.40) 42%, transparent 72%)", borderRadius: "inherit" }} />}
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 70% 40% at 50% 0%, ${item.accent}22 0%, transparent 65%)`, pointerEvents: "none", borderRadius: "inherit" }} />
     </div>
   );
@@ -395,12 +398,16 @@ const CenterCard = memo(function CenterCard({ reduced }: { reduced: boolean }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", filter: "brightness(0.50) saturate(0.65) contrast(1.10)", willChange: "opacity", backfaceVisibility: "hidden" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center",
+            filter: colors.bg === (C as ColorTokens).bg ? "brightness(0.50) saturate(0.65) contrast(1.10)" : "none",
+            willChange: "opacity", backfaceVisibility: "hidden" }}
         />
       </AnimatePresence>
 
-      {/* Dark cinematic gradient — kept in both modes to ensure text contrast on photo */}
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(8,3,24,0.56) 44%, rgba(4,1,14,0.90) 100%)", pointerEvents: "none", borderRadius: "inherit" }} />
+      {/* Dark cinematic gradient — dark mode only; light mode keeps the photo clean */}
+      {colors.bg === (C as ColorTokens).bg && (
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(8,3,24,0.56) 44%, rgba(4,1,14,0.90) 100%)", pointerEvents: "none", borderRadius: "inherit" }} />
+      )}
 
       {/* Green spectral glow — toned per mode via greenGlow token */}
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 72% 52% at 50% 40%, ${colors.greenGlow} 0%, transparent 66%)`, pointerEvents: "none", borderRadius: "inherit", opacity: 0.44 }} />
@@ -1318,6 +1325,7 @@ export default function LuxuryLandingPage() {
             gap: "16px",
             padding: "0 20px",
             overflow: "hidden",
+            background: colors.bg,
           }}
         >
             {/* LEFT — phase 1: slides down; phase 2: real flex split into two independent cards */}
