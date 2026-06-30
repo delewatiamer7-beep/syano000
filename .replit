@@ -41,7 +41,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd artifacts/embedding-service && EMBEDDING_PORT=8000 .venv/bin/python main.py"
+args = "cd artifacts/embedding-service && EMBEDDING_PORT=8000 python3 main.py"
 waitForPort = 8000
 
 [[workflows.workflow]]
@@ -119,7 +119,3 @@ externalPort = 80
 [[ports]]
 localPort = 8000
 externalPort = 8000
-
-[[ports]]
-localPort = 20787
-externalPort = 3000
