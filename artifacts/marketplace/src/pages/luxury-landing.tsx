@@ -11,31 +11,23 @@
 import { useState, useEffect, useRef, useMemo, memo, createContext, useContext } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useTheme } from "next-themes";
 import { LuxuryNavbar } from "@/components/LuxuryNavbar";
 import {
   useListProducts,
   getListProductsQueryKey,
-  useAddToCart,
-  getGetCartQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/AuthContext";
-import { useGuestCart } from "@/contexts/GuestCartContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useSellerOnboarding } from "@/hooks/useSellerOnboarding";
 import { useCourierOnboarding } from "@/hooks/useCourierOnboarding";
-import { useToast } from "@/hooks/use-toast";
 import {
-  ShoppingCart,
   Store,
   Bike,
   Star,
   Timer,
   Zap,
   ArrowLeft,
-  ShoppingBag,
   ExternalLink,
   Instagram,
   Twitter,
@@ -130,6 +122,20 @@ const SECTION_CSS = `
 
   .lux-root { text-rendering: optimizeSpeed; }
   .lux-gpu-layer { transform: translateZ(0); backface-visibility: hidden; }
+
+  /* ─── Amazon-style utility grids ────────────────────────────────────────────*/
+  .amz-section { max-width: 1400px; margin: 0 auto; padding: 0 1rem; }
+  @media (min-width: 768px) { .amz-section { padding: 0 2rem; } }
+  .amz-cat-8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (min-width: 768px) { .amz-cat-8 { grid-template-columns: repeat(8, 1fr); gap: 12px; } }
+  .amz-prod-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (min-width: 640px) { .amz-prod-4 { grid-template-columns: repeat(4, 1fr); gap: 12px; } }
+  .amz-prod-6 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (min-width: 640px) { .amz-prod-6 { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+  @media (min-width: 1024px) { .amz-prod-6 { grid-template-columns: repeat(6, 1fr); gap: 12px; } }
+  .amz-stores-3 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px) { .amz-stores-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+  .amz-card-hover:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.20) !important; transform: translateY(-2px); }
 `;
 
 /* ─── Brand tokens — DARK (default) ──────────────────────────────────────────
@@ -374,38 +380,72 @@ const CenterCard = memo(function CenterCard({ reduced }: { reduced: boolean }) {
    LUXURY SECTION HELPERS
 ═══════════════════════════════════════════════════════════════════════════*/
 
-/** Reusable section header: green-bar eyebrow + bold heading + "see all" link */
-function LuxSectionHeader({
-  eyebrowKey, titleKey, seeAllKey, seeAllHref, extra,
-}: {
-  eyebrowKey: string; titleKey: string; seeAllKey: string; seeAllHref: string; extra?: React.ReactNode;
-}) {
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/* ─── Amazon-style shared header ─────────────────────────────────────────────
+   Bold title left + "See all" link right — no eyebrow bar, no letter-spacing. */
+function AmzSectionHeader({ title, seeAllKey, seeAllHref }: { title: string; seeAllKey: string; seeAllHref: string }) {
   const { t } = useTranslation();
   const colors = useContext(LuxColorCtx);
   return (
-    <div style={{ marginBottom: "3.5rem" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1.5rem", flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
-            <span style={{ display: "block", width: "2rem", height: "2px", background: colors.green, borderRadius: "9999px", flexShrink: 0 }} />
-            <p style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.18em", color: colors.green, textTransform: "uppercase", margin: 0 }}>
-              {t(eyebrowKey)}
-            </p>
-          </div>
-          <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.75rem,3.5vw,2.75rem)", letterSpacing: "-0.025em", lineHeight: 1.15, color: colors.white, margin: 0 }}>
-            {t(titleKey)}
-          </h2>
-          {extra}
-        </div>
-        <Link href={seeAllHref} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontFamily: F.sans, fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", color: colors.muted, textDecoration: "none", paddingBottom: "0.2rem", borderBottom: `1px solid ${colors.border}`, flexShrink: 0, alignSelf: "flex-end" }}>
-          {t(seeAllKey)} <ArrowLeft style={{ width: 13, height: 13 }} />
-        </Link>
-      </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+      <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.1rem,2.2vw,1.4rem)", color: colors.white, margin: 0, letterSpacing: "-0.01em" }}>
+        {title}
+      </h2>
+      <Link href={seeAllHref} style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.78rem", color: colors.green, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+        {t(seeAllKey)} <ArrowLeft style={{ width: 13, height: 13 }} />
+      </Link>
     </div>
   );
 }
 
-const pad = (n: number) => String(n).padStart(2, "0");
+/* ─── Amazon-style product card ──────────────────────────────────────────────
+   Image dominant square, price in green, discount badge top-right.
+   Optional rank badge (top-left) for best-sellers section.                  */
+const AmzProductCard = memo(function AmzProductCard({
+  id, name, price, originalPrice, discountPercent, img, category, rank,
+}: {
+  id: number; name: string; price: number; originalPrice?: number | null;
+  discountPercent?: number | null; img: string; category: string; rank?: number;
+}) {
+  const { format } = useCurrency();
+  const colors = useContext(LuxColorCtx);
+  return (
+    <Link href={`/products/${id}`} style={{ display: "block", textDecoration: "none", height: "100%" }}>
+      <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.11)", height: "100%", display: "flex", flexDirection: "column", transition: "box-shadow 0.2s, transform 0.18s" }}>
+        {/* Square image */}
+        <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: colors.card2, flexShrink: 0 }}>
+          {img && <img src={img} alt={name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.45s" }} />}
+          {/* Rank badge (top-start) */}
+          {rank !== undefined && (
+            <div style={{ position: "absolute", top: 8, insetInlineStart: 8, width: 26, height: 26, borderRadius: "50%", background: rank < 3 ? colors.green : colors.card, border: rank < 3 ? "none" : `1.5px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "0.65rem", color: rank < 3 ? "#fff" : colors.muted }}>{rank + 1}</span>
+            </div>
+          )}
+          {/* Discount badge (top-end) — only when no rank badge */}
+          {discountPercent && discountPercent > 0 && rank === undefined && (
+            <div style={{ position: "absolute", top: 8, insetInlineEnd: 8, background: "#CC0C39", borderRadius: "4px", padding: "2px 7px" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.65rem", color: "#fff" }}>-{discountPercent}%</span>
+            </div>
+          )}
+        </div>
+        {/* Info */}
+        <div style={{ padding: "0.7rem 0.85rem 0.9rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+          {category && (
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "9px", color: colors.dimmed, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{category}</p>
+          )}
+          <h3 style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.82rem", color: colors.white, lineHeight: 1.45, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", flex: 1 }}>{name}</h3>
+          <div style={{ marginTop: "auto", paddingTop: "0.4rem" }}>
+            <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", color: colors.green, letterSpacing: "-0.02em" }} translate="no">{format(price)}</div>
+            {originalPrice && originalPrice > price && (
+              <div style={{ fontFamily: F.sans, fontSize: "0.7rem", color: colors.dimmed, textDecoration: "line-through", marginTop: "1px" }} translate="no">{format(originalPrice)}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+});
 
 /** Countdown timer for deals section */
 function LuxCountdownTimer() {
@@ -440,158 +480,60 @@ function LuxCountdownTimer() {
   );
 }
 
-/* ─── Luxury deal card (hero = full-bleed tall; default = horizontal side) ───*/
-const LuxDealCard = memo(function LuxDealCard({ deal, index, hero = false }: { deal: DealData; index: number; hero?: boolean }) {
-  const { t } = useTranslation();
-  const { format } = useCurrency();
-  const [, navigate] = useLocation();
-  const { isAuthenticated, isCustomer, isSeller, isAdmin, isCourier } = useAuth();
-  const { addGuestItem } = useGuestCart();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [adding, setAdding] = useState(false);
-  const colors = useContext(LuxColorCtx);
 
-  const addToCartMutation = useAddToCart({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-        toast({ title: t("cart.added_title", "Added to cart ✓"), description: deal.name });
-      },
-      onError: () => {
-        toast({ title: t("common.error"), description: t("cart.add_error", "Could not add to cart"), variant: "destructive" });
-      },
-    },
-  });
-
-  const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (deal.id === 0) { navigate("/shop"); return; }
-    if (isSeller || isAdmin || isCourier) return;
-    setAdding(true);
-    if (isAuthenticated && isCustomer) {
-      addToCartMutation.mutate({ data: { productId: deal.id, quantity: 1, variantId: null } });
-    } else {
-      addGuestItem(deal.id, null, 1);
-      toast({ title: t("cart.added_title", "Added to cart ✓"), description: deal.name });
-    }
-    setTimeout(() => setAdding(false), 800);
-  };
-
-  const href = deal.id > 0 ? `/products/${deal.id}` : "/products";
-  const hasDiscount = !!(deal.originalPrice && deal.discountPercent && deal.discountPercent > 0);
-
-  /* ── Hero variant: full-bleed tall image, overlay everything ── */
-  if (hero) {
-    return (
-      <motion.div
-        className="lux-deals-hero"
-        initial={{ opacity: 0, scale: 0.98 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true, margin: "-40px" }}
-        transition={{ duration: 0.6, ease: fadeEase }}
-        style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: colors.card, minHeight: "420px" }}>
-        <Link href={href} style={{ display: "block", position: "absolute", inset: 0 }}>
-          {deal.img && <img src={deal.img} alt={deal.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.22) 45%, transparent 72%)" }} />
-          {hasDiscount && (
-            <div style={{ position: "absolute", top: "1.25rem", insetInlineEnd: "1.25rem" }}>
-              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "1rem", background: colors.green, color: "#fff", padding: "6px 14px", borderRadius: "9999px" }}>-{deal.discountPercent}%</span>
-            </div>
-          )}
-          <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "2rem" }}>
-            <p style={{ fontFamily: F.sans, fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.50)", margin: "0 0 0.5rem" }}>{deal.category}</p>
-            <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.25rem,2vw,1.75rem)", color: "#fff", margin: "0 0 1.25rem", lineHeight: 1.3 }}>{deal.name}</h3>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "1.75rem", letterSpacing: "-0.03em", color: "#fff" }} translate="no">{format(deal.price)}</span>
-              {hasDiscount && <span style={{ fontFamily: F.sans, fontSize: "1rem", color: "rgba(255,255,255,0.38)", textDecoration: "line-through" }} translate="no">{format(deal.originalPrice!)}</span>}
-              <button onClick={handleAdd} disabled={adding} style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "6px", background: "#ffffff", color: "#0a0a0a", border: "none", borderRadius: "9999px", padding: "10px 22px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", opacity: adding ? 0.7 : 1, flexShrink: 0 }}>
-                {adding ? <div style={{ width: 12, height: 12, border: "1.5px solid #0a0a0a", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : <ShoppingCart style={{ width: 13, height: 13 }} />}
-                {t("home.deals.add")}
-              </button>
-            </div>
-          </div>
-        </Link>
-      </motion.div>
-    );
-  }
-
-  /* ── Side variant: horizontal thumbnail + info ── */
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 16 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.45, delay: index * 0.08, ease: fadeEase }}
-      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "16px", overflow: "hidden", display: "flex", flexDirection: "row" }}>
-      <Link href={href} style={{ display: "flex", width: "100%", textDecoration: "none" }}>
-        <div style={{ width: 130, minWidth: 130, flexShrink: 0, overflow: "hidden", background: colors.card2, position: "relative" }}>
-          {deal.img && <img src={deal.img} alt={deal.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-          {hasDiscount && (
-            <div style={{ position: "absolute", top: "8px", insetInlineEnd: "8px" }}>
-              <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.68rem", background: colors.green, color: "#fff", padding: "2px 7px", borderRadius: "9999px" }}>-{deal.discountPercent}%</span>
-            </div>
-          )}
-        </div>
-        <div style={{ flex: 1, padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
-          <div>
-            <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", color: colors.dimmed, margin: "0 0 0.3rem" }}>{deal.category}</p>
-            <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.4, color: colors.white, margin: "0 0 0.5rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{deal.name}</h3>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-            <div>
-              <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.02em", color: colors.white }} translate="no">{format(deal.price)}</div>
-              {hasDiscount && <div style={{ fontFamily: F.sans, fontSize: "10px", color: colors.dimmed, textDecoration: "line-through", marginTop: "2px" }} translate="no">{format(deal.originalPrice!)}</div>}
-            </div>
-            <button onClick={handleAdd} disabled={adding} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.3)`, color: "#4ade80", flexShrink: 0, cursor: "pointer", opacity: adding ? 0.5 : 1 }}>
-              {adding ? <div style={{ width: 10, height: 10, border: `1.5px solid #4ade80`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : <ShoppingCart style={{ width: 13, height: 13 }} />}
-            </button>
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  );
-});
-
-/* ─── Luxury store card — full-bleed cinematic overlay ──────────────────────*/
+/* ─── Amazon-style store card ────────────────────────────────────────────────
+   Banner image at top → logo + name + tagline → stats → "Visit store" CTA   */
 const LuxStoreCard = memo(function LuxStoreCard({ store, index }: { store: StoreDisplayData; index: number }) {
   const { t } = useTranslation();
   const colors = useContext(LuxColorCtx);
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.55, delay: index * 0.1, ease: fadeEase }}
-      style={{ position: "relative", borderRadius: "20px", overflow: "hidden", aspectRatio: "4/3", background: colors.card }}>
-      <Link href={store.slug ? `/store/${store.slug}` : "/sellers/directory"} style={{ display: "block", position: "absolute", inset: 0, textDecoration: "none" }}>
-        <img src={store.coverImg} alt={store.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.28) 52%, transparent 82%)" }} />
-        {/* Top: verified badge + rating pill */}
-        <div style={{ position: "absolute", top: "1rem", insetInlineStart: "1rem", insetInlineEnd: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          {store.verified ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: F.sans, fontWeight: 600, fontSize: "9px", letterSpacing: "0.06em", background: "rgba(22,163,74,0.22)", border: "1px solid rgba(22,163,74,0.35)", color: "#4ade80", padding: "3px 9px", borderRadius: "9999px", backdropFilter: "blur(8px)" }}>
-              <span style={{ width: 4, height: 4, background: "#4ade80", borderRadius: "50%", display: "inline-block" }} />
-              {t("home.stores.verified")}
-            </span>
-          ) : <span />}
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.50)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: "9999px" }}>
-            <Star style={{ width: 11, height: 11, fill: "#fbbf24", color: "#fbbf24", flexShrink: 0 }} />
-            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.78rem", color: "#fff" }}>{store.rating}</span>
-          </span>
-        </div>
-        {/* Logo initial */}
-        <div style={{ position: "absolute", bottom: "4.25rem", insetInlineStart: "1.25rem" }}>
-          <div style={{ width: 42, height: 42, borderRadius: "12px", background: `${store.logoColor}22`, border: `1.5px solid ${store.logoColor}44`, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)" }}>
-            <span style={{ fontFamily: F.naskh, fontWeight: 900, fontSize: "1.15rem", color: store.logoColor }}>{store.logoInitial}</span>
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.48, delay: index * 0.1, ease: fadeEase }}>
+      <Link href={store.slug ? `/store/${store.slug}` : "/sellers/directory"} style={{ display: "block", textDecoration: "none" }}>
+        <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.11)", transition: "box-shadow 0.2s, transform 0.18s" }}>
+          {/* ── Banner image ── */}
+          <div style={{ position: "relative", height: 148, overflow: "hidden", background: colors.card2 }}>
+            <img src={store.coverImg} alt={store.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.52) 0%, transparent 62%)" }} />
+            {/* Verified pill */}
+            {store.verified && (
+              <div style={{ position: "absolute", top: 10, insetInlineStart: 10, display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(22,163,74,0.20)", border: "1px solid rgba(22,163,74,0.35)", backdropFilter: "blur(8px)", padding: "3px 9px", borderRadius: 9999 }}>
+                <span style={{ width: 5, height: 5, background: "#4ade80", borderRadius: "50%", display: "inline-block", flexShrink: 0 }} />
+                <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "9px", color: "#4ade80", letterSpacing: "0.04em" }}>{t("home.stores.verified")}</span>
+              </div>
+            )}
+            {/* Rating pill */}
+            <div style={{ position: "absolute", top: 10, insetInlineEnd: 10, display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", padding: "3px 10px", borderRadius: 9999 }}>
+              <Star style={{ width: 11, height: 11, fill: "#fbbf24", color: "#fbbf24", flexShrink: 0 }} />
+              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.75rem", color: "#fff" }}>{store.rating}</span>
+            </div>
           </div>
-        </div>
-        {/* Bottom info */}
-        <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "1.1rem 1.25rem" }}>
-          <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.05rem", color: "#fff", margin: "0 0 0.2rem" }}>{store.name}</h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.72rem", color: "rgba(255,255,255,0.52)", margin: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.tagline}</p>
-            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.72rem", color: "#4ade80", flexShrink: 0, letterSpacing: "0.04em" }}>{t("home.stores.visit")} ›</span>
+          {/* ── Store info ── */}
+          <div style={{ padding: "1rem 1.1rem 1.15rem" }}>
+            {/* Logo + name row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.75rem" }}>
+              <div style={{ width: 46, height: 46, borderRadius: 10, background: `${store.logoColor}1A`, border: `1.5px solid ${store.logoColor}33`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontFamily: F.naskh, fontWeight: 900, fontSize: "1.2rem", color: store.logoColor }}>{store.logoInitial}</span>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "0.96rem", color: colors.white, margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</h3>
+                <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.72rem", color: colors.dimmed, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.tagline}</p>
+              </div>
+            </div>
+            {/* Stats row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.55rem 0", borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}`, marginBottom: "0.85rem" }}>
+              <span style={{ fontFamily: F.sans, fontSize: "0.72rem", color: colors.dimmed }}>{t("home.stores.products_count", { count: store.productCount.toLocaleString() })}</span>
+              <span style={{ width: 3, height: 3, background: colors.border, borderRadius: "50%", flexShrink: 0 }} />
+              <span style={{ fontFamily: F.sans, fontSize: "0.72rem", color: colors.dimmed, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{store.categoryLabel}</span>
+            </div>
+            {/* CTA */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.25)`, borderRadius: 6, padding: "0.58rem" }}>
+              <ExternalLink style={{ width: 13, height: 13, color: colors.green }} />
+              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.8rem", color: colors.green }}>{t("home.stores.visit")}</span>
+            </div>
           </div>
         </div>
       </Link>
@@ -603,49 +545,34 @@ const LuxStoreCard = memo(function LuxStoreCard({ store, index }: { store: Store
    LUXURY SECTION COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════*/
 
-/** Section wrapper style helper — takes colors from caller (via context) */
-const sectionStyle = (c: ColorTokens, alt = false): React.CSSProperties => ({
-  background: alt ? c.card2 : c.bg,
-  paddingTop: "6rem",
-  paddingBottom: "6rem",
-  borderTop: `1px solid ${c.border}`,
-});
-
-/* ── 1. Popular Categories — editorial numbered cards ────────────────────────*/
+/* ── 1. Popular Categories — Amazon 8-tile grid ──────────────────────────────*/
 const LuxCategoriesSection = memo(function LuxCategoriesSection() {
   const { t, i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
   return (
-    <section style={sectionStyle(colors, false)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <LuxSectionHeader eyebrowKey="home.categories.eyebrow" titleKey="home.categories.title" seeAllKey="home.categories.see_all" seeAllHref="/shop" />
-        <div className="lux-cat-grid">
+    <section style={{ background: colors.bg, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+      <div className="amz-section">
+        <AmzSectionHeader title={t("home.categories.title")} seeAllKey="home.categories.see_all" seeAllHref="/shop" />
+        <div className="amz-cat-8">
           {CATEGORY_DEFS.map((cat, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.48, delay: i * 0.05, ease: fadeEase }}>
-              <Link href={`/shop?category=${encodeURIComponent(cat.slug)}`}
-                style={{ display: "block", position: "relative", overflow: "hidden", borderRadius: "20px", aspectRatio: "2 / 3", background: colors.card }}>
-                <img src={cat.img} alt={t(cat.nameKey)} loading="lazy" decoding="async"
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.65s ease" }} />
-                {/* Deep gradient for text readability */}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.12) 52%, transparent 100%)" }} />
-                {/* Editorial number — top-right, large muted */}
-                <div style={{ position: "absolute", top: "0.5rem", insetInlineEnd: "0.6rem", fontFamily: F.sans, fontWeight: 900, fontSize: "clamp(2.5rem,5vw,4rem)", lineHeight: 1, color: "rgba(255,255,255,0.10)", letterSpacing: "-0.05em", userSelect: "none", pointerEvents: "none" }}>
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                {/* Accent dot */}
-                <span style={{ position: "absolute", insetInlineStart: "1rem", bottom: "3.6rem", width: 6, height: 6, borderRadius: "50%", background: cat.accent, display: "block" }} />
-                {/* Name + count */}
-                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "0.75rem 1rem 1rem" }}>
-                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.9rem", color: "#FFFFFF", margin: "0 0 0.2rem", letterSpacing: "0.01em" }}>
-                    {t(cat.nameKey)}
-                  </h3>
-                  <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.68rem", color: "rgba(255,255,255,0.46)", margin: 0 }}>
-                    {t(cat.countKey)}
-                  </p>
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.38, delay: i * 0.04, ease: fadeEase }}>
+              <Link href={`/shop?category=${encodeURIComponent(cat.slug)}`} style={{ display: "block", textDecoration: "none" }}>
+                <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 2px 5px rgba(0,0,0,0.09)", transition: "box-shadow 0.2s, transform 0.18s" }}>
+                  <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden" }}>
+                    <img src={cat.img} alt={t(cat.nameKey)} loading={i < 4 ? "eager" : "lazy"} decoding="async"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.48) 0%, transparent 55%)" }} />
+                    <div style={{ position: "absolute", bottom: 7, insetInlineStart: 8, width: 7, height: 7, borderRadius: "50%", background: cat.accent }} />
+                  </div>
+                  <div style={{ padding: "0.48rem 0.65rem 0.58rem" }}>
+                    <p style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.72rem", color: colors.white, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {t(cat.nameKey)}
+                    </p>
+                  </div>
                 </div>
               </Link>
             </motion.div>
@@ -656,25 +583,48 @@ const LuxCategoriesSection = memo(function LuxCategoriesSection() {
   );
 });
 
-/* ── 2. Featured Deals — bento: hero left + 2 side cards right ───────────────*/
+/* ── 2. Featured Deals — Amazon 4-column product grid ────────────────────────*/
 const LuxDealsSection = memo(function LuxDealsSection({ deals }: { deals: DealData[] }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
   if (deals.length === 0) return null;
   return (
-    <section style={sectionStyle(colors, true)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <LuxSectionHeader eyebrowKey="home.deals.eyebrow" titleKey="home.deals.title" seeAllKey="home.deals.see_all" seeAllHref="/shop?hasDiscount=true" extra={<LuxCountdownTimer />} />
-        <div className="lux-deals-bento">
-          {deals[0] && <LuxDealCard deal={deals[0]} index={0} hero />}
-          {deals.slice(1, 3).map((deal, i) => <LuxDealCard key={`${deal.id}-${i}`} deal={deal} index={i + 1} />)}
+    <section style={{ background: colors.card2, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+      <div className="amz-section">
+        {/* Header row: title + timer + see-all */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
+            <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.1rem,2.2vw,1.4rem)", color: colors.white, margin: 0, letterSpacing: "-0.01em" }}>
+              {t("home.deals.title")}
+            </h2>
+            <LuxCountdownTimer />
+          </div>
+          <Link href="/shop?hasDiscount=true" style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.78rem", color: colors.green, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+            {t("home.deals.see_all")} <ArrowLeft style={{ width: 13, height: 13 }} />
+          </Link>
+        </div>
+        {/* 4-col product grid */}
+        <div className="amz-prod-4">
+          {deals.map((deal, i) => (
+            <motion.div key={`${deal.id}-${i}`}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.42, delay: i * 0.07, ease: fadeEase }}>
+              <AmzProductCard
+                id={deal.id} name={deal.name} price={deal.price}
+                originalPrice={deal.originalPrice} discountPercent={deal.discountPercent}
+                img={deal.img} category={deal.category}
+              />
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
   );
 });
 
-/* ── 3. Trusted Stores ───────────────────────────────────────────────────────*/
+/* ── 3. Trusted Stores — Amazon 3-column card grid ───────────────────────────*/
 const LuxStoresSection = memo(function LuxStoresSection() {
   const { t, i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
@@ -717,10 +667,10 @@ const LuxStoresSection = memo(function LuxStoresSection() {
   })), [stores, t]);
 
   return (
-    <section style={sectionStyle(colors, false)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <LuxSectionHeader eyebrowKey="home.stores.eyebrow" titleKey="home.stores.title" seeAllKey="home.stores.see_all" seeAllHref="/sellers/directory" />
-        <div className="lux-stores-row">
+    <section style={{ background: colors.bg, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+      <div className="amz-section">
+        <AmzSectionHeader title={t("home.stores.title")} seeAllKey="home.stores.see_all" seeAllHref="/sellers/directory" />
+        <div className="amz-stores-3">
           {displayStores.map((store, i) => <LuxStoreCard key={store.id} store={store} index={i} />)}
         </div>
       </div>
@@ -728,71 +678,48 @@ const LuxStoresSection = memo(function LuxStoresSection() {
   );
 });
 
-/* ── 4. Trending Products — ranked editorial list ────────────────────────────*/
+/* ── 4. Trending Products — Amazon Best Sellers 6-column grid ────────────────*/
 const LuxTrendingSection = memo(function LuxTrendingSection({ products }: { products: Product[] }) {
-  const { i18n } = useTranslation();
-  const { format } = useCurrency();
+  const { t, i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
   if (products.length === 0) return null;
 
-  return (
-    <section style={sectionStyle(colors, true)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <LuxSectionHeader eyebrowKey="home.trending.eyebrow" titleKey="home.trending.title" seeAllKey="home.trending.see_all" seeAllHref="/shop" />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {products.slice(0, 6).map((p, i) => {
-            const imgs      = (p as { imageUrls?: string[] }).imageUrls;
-            const finalPrice = (p as { finalPrice?: number }).finalPrice ? Number((p as { finalPrice?: number }).finalPrice) : Number(p.price);
-            const compareAt  = (p as { compareAtPrice?: number }).compareAtPrice ? Number((p as { compareAtPrice?: number }).compareAtPrice) : undefined;
-            const discPct    = (p as { discountPercent?: number }).discountPercent ? Number((p as { discountPercent?: number }).discountPercent) : undefined;
-            const storeName  = (p as { storeName?: string; sellerName?: string }).storeName ?? (p as { storeName?: string; sellerName?: string }).sellerName ?? "";
+  const items = products.slice(0, 6).map((p, i) => {
+    const imgs       = (p as { imageUrls?: string[] }).imageUrls;
+    const finalPrice = (p as { finalPrice?: number }).finalPrice ? Number((p as { finalPrice?: number }).finalPrice) : Number(p.price);
+    const compareAt  = (p as { compareAtPrice?: number }).compareAtPrice ? Number((p as { compareAtPrice?: number }).compareAtPrice) : undefined;
+    const discPct    = (p as { discountPercent?: number }).discountPercent ? Number((p as { discountPercent?: number }).discountPercent) : undefined;
+    return { id: p.id, name: p.name, category: p.category ?? "", price: finalPrice, originalPrice: compareAt, discountPercent: discPct, img: imgs?.[0] ?? "", rank: i };
+  });
 
-            return (
-              <motion.div key={`${p.id}-${i}`}
-                initial={{ opacity: 0, x: -16 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.42, delay: i * 0.05, ease: fadeEase }}>
-                <Link href={`/products/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.25rem 0", borderBottom: `1px solid ${colors.border}`, textDecoration: "none" }}>
-                  {/* Rank number */}
-                  <div style={{ width: "2.5rem", flexShrink: 0, fontFamily: F.sans, fontWeight: 900, fontSize: "1.25rem", letterSpacing: "-0.04em", color: i < 3 ? colors.green : colors.dimmed, lineHeight: 1, textAlign: "center" }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </div>
-                  {/* Thumbnail */}
-                  <div style={{ width: 68, height: 68, borderRadius: "14px", overflow: "hidden", background: colors.card, flexShrink: 0, border: `1px solid ${colors.border}` }}>
-                    {imgs?.[0] && <img src={imgs[0]} alt={p.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                  </div>
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {storeName && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", color: colors.dimmed, margin: "0 0 0.25rem" }}>{storeName}</p>}
-                    <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.95rem", color: colors.white, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</h3>
-                  </div>
-                  {/* Price + discount */}
-                  <div style={{ flexShrink: 0, textAlign: "end" }}>
-                    <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.02em", color: colors.white }} translate="no">{format(finalPrice)}</div>
-                    {compareAt && <div style={{ fontFamily: F.sans, fontSize: "11px", color: colors.dimmed, textDecoration: "line-through", marginTop: "2px" }} translate="no">{format(compareAt)}</div>}
-                    {discPct && discPct > 0 && (
-                      <span style={{ display: "inline-flex", marginTop: "4px", fontFamily: F.sans, fontWeight: 700, fontSize: "9px", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.30)`, color: "#4ade80", padding: "2px 7px", borderRadius: "9999px" }}>-{discPct}%</span>
-                    )}
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
+  return (
+    <section style={{ background: colors.card2, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+      <div className="amz-section">
+        <AmzSectionHeader title={t("home.trending.title")} seeAllKey="home.trending.see_all" seeAllHref="/shop" />
+        <div className="amz-prod-6">
+          {items.map((item, i) => (
+            <motion.div key={`${item.id}-${i}`}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-20px" }}
+              transition={{ duration: 0.38, delay: i * 0.05, ease: fadeEase }}>
+              <AmzProductCard {...item} />
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
   );
 });
 
-/* ── 5. New Arrivals — asymmetric bento drop grid ────────────────────────────*/
+/* ── 5. New Arrivals — Amazon 4-column product grid ──────────────────────────*/
 const LuxArrivalsSection = memo(function LuxArrivalsSection({ products }: { products: Product[] }) {
   const { t, i18n } = useTranslation();
   const { format } = useCurrency();
   const colors = useContext(LuxColorCtx);
   if (products.length < 4) return null;
 
-  const items = products.slice(0, 3).map((p, i) => {
+  const items = products.slice(0, 4).map((p, i) => {
     const imgs = (p as { imageUrls?: string[] }).imageUrls;
     return {
       id: p.id, name: p.name, category: p.category ?? "",
@@ -801,58 +728,37 @@ const LuxArrivalsSection = memo(function LuxArrivalsSection({ products }: { prod
     };
   });
 
-  const main = items[0];
-  const rest = items.slice(1);
-
   return (
-    <section style={sectionStyle(colors, false)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <LuxSectionHeader eyebrowKey="home.arrivals.eyebrow" titleKey="home.arrivals.title" seeAllKey="home.arrivals.see_all" seeAllHref="/shop" />
-        <div className="lux-arrivals-bento">
-          {/* Main large card — spans 2 rows on desktop */}
-          <motion.div className="lux-arrivals-main"
-            initial={{ opacity: 0, scale: 0.97 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.6, ease: fadeEase }}
-            style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: colors.card, minHeight: "300px" }}>
-            <Link href={`/products/${main.id}`} style={{ display: "block", position: "absolute", inset: 0 }}>
-              {main.img && <img src={main.img} alt={main.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.18) 55%, transparent 82%)" }} />
-              <div style={{ position: "absolute", top: "1.25rem", insetInlineStart: "1.25rem" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.04em", background: colors.green, color: "#fff", padding: "5px 12px", borderRadius: "9999px" }}>
-                  <Zap style={{ width: 10, height: 10 }} /> {t("home.arrivals.new_since", { count: main.daysAgo })}
-                </span>
-              </div>
-              <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "2rem" }}>
-                {main.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "0.68rem", letterSpacing: "0.1em", color: "rgba(255,255,255,0.48)", textTransform: "uppercase", margin: "0 0 0.5rem" }}>{main.category}</p>}
-                <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.25rem,2.5vw,1.75rem)", lineHeight: 1.25, letterSpacing: "-0.01em", color: "#FFFFFF", margin: "0 0 0.75rem" }}>{main.name}</h3>
-                <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.5rem", letterSpacing: "-0.03em", color: "#FFFFFF" }} translate="no">{format(main.price)}</span>
-              </div>
-            </Link>
-          </motion.div>
-
-          {/* Side cards */}
-          {rest.map((item, i) => (
+    <section style={{ background: colors.bg, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+      <div className="amz-section">
+        <AmzSectionHeader title={t("home.arrivals.title")} seeAllKey="home.arrivals.see_all" seeAllHref="/shop" />
+        <div className="amz-prod-4">
+          {items.map((item, i) => (
             <motion.div key={item.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.5, delay: 0.1 + i * 0.1, ease: fadeEase }}
-              style={{ position: "relative", borderRadius: "20px", overflow: "hidden", background: colors.card, minHeight: "180px" }}>
-              <Link href={`/products/${item.id}`} style={{ display: "block", position: "absolute", inset: 0 }}>
-                {item.img && <img src={item.img} alt={item.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, transparent 62%)" }} />
-                <div style={{ position: "absolute", top: "0.75rem", insetInlineStart: "0.75rem" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: F.sans, fontWeight: 700, fontSize: "8px", letterSpacing: "0.04em", background: "rgba(0,0,0,0.50)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.68)", padding: "3px 8px", borderRadius: "9999px", backdropFilter: "blur(8px)" }}>
-                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-                    {t("home.arrivals.ago", { count: item.daysAgo })}
-                  </span>
-                </div>
-                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "0.85rem 1.1rem" }}>
-                  {item.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "8px", color: "rgba(255,255,255,0.44)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 0.25rem" }}>{item.category}</p>}
-                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.3, color: "#FFFFFF", margin: "0 0 0.35rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h3>
-                  <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", letterSpacing: "-0.02em", color: "#FFFFFF" }} translate="no">{format(item.price)}</span>
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.4, delay: i * 0.07, ease: fadeEase }}>
+              <Link href={`/products/${item.id}`} style={{ display: "block", textDecoration: "none", height: "100%" }}>
+                <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.11)", height: "100%", display: "flex", flexDirection: "column", transition: "box-shadow 0.2s, transform 0.18s" }}>
+                  {/* Square image */}
+                  <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: colors.card2, flexShrink: 0 }}>
+                    {item.img && <img src={item.img} alt={item.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+                    {/* "New" badge */}
+                    <div style={{ position: "absolute", top: 8, insetInlineStart: 8, display: "inline-flex", alignItems: "center", gap: 4, background: colors.green, borderRadius: 4, padding: "3px 9px" }}>
+                      <Zap style={{ width: 9, height: 9, color: "#fff" }} />
+                      <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "9px", color: "#fff", letterSpacing: "0.04em" }}>{t("home.arrivals.eyebrow")}</span>
+                    </div>
+                  </div>
+                  {/* Info */}
+                  <div style={{ padding: "0.7rem 0.85rem 0.9rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    {item.category && <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "9px", color: colors.dimmed, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.category}</p>}
+                    <h3 style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.82rem", color: colors.white, lineHeight: 1.45, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", flex: 1 }}>{item.name}</h3>
+                    <div style={{ marginTop: "auto", paddingTop: "0.4rem" }}>
+                      <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", color: colors.green, letterSpacing: "-0.02em" }} translate="no">{format(item.price)}</div>
+                      <div style={{ fontFamily: F.sans, fontSize: "0.7rem", color: colors.dimmed, marginTop: 2 }}>{t("home.arrivals.ago", { count: item.daysAgo })}</div>
+                    </div>
+                  </div>
                 </div>
               </Link>
             </motion.div>
