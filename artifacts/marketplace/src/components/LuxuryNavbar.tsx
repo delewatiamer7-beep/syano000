@@ -400,6 +400,21 @@ export function LuxuryNavbar() {
         .syano-icon-btn { transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease !important; }
         .syano-icon-btn:hover { transform: scale(1.08) !important; }
         .syano-icon-btn:active { transform: scale(0.94) !important; }
+
+        /* Logo text — gradient changes atomically via CSS class, not React state */
+        .syano-logo-text {
+          display: inline-block;
+          background: linear-gradient(135deg, #0f172a 0%, #15803d 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        html.dark .syano-logo-text {
+          background: linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
       `}</style>
 
       {/* Floating header — fixed to viewport top */}
@@ -438,15 +453,8 @@ export function LuxuryNavbar() {
                 style={{ height: 40, width: 40, filter: isDark ? "drop-shadow(0 0 10px rgba(34,197,94,0.25))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.15))" }}
                 loading="eager"
               />
-              <span style={{
-                display: "inline-flex", alignItems: "center",
+              <span className="syano-logo-text" style={{
                 fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.12em", fontSize: "1.375rem", lineHeight: 1,
-                background: isDark
-                  ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
-                  : "linear-gradient(135deg, #0f172a 0%, #15803d 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
               }}>
                 SYANO
               </span>
@@ -535,16 +543,8 @@ export function LuxuryNavbar() {
                   style={{ height: 44, width: 44, objectFit: "contain", flexShrink: 0, filter: isDark ? "drop-shadow(0 0 12px rgba(34,197,94,0.28))" : "drop-shadow(0 2px 8px rgba(0,0,0,0.14))" }}
                   loading="eager"
                 />
-                <span style={{
-                  display: "inline-flex", alignItems: "center",
+                <span className="syano-logo-text" style={{
                   fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.13em", fontSize: "1.5rem", lineHeight: 1,
-                  background: isDark
-                    ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
-                    : "linear-gradient(135deg, #0f172a 0%, #15803d 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: isDark ? "drop-shadow(0 0 8px rgba(134,239,172,0.35))" : "none",
                 }}>
                   SYANO
                 </span>

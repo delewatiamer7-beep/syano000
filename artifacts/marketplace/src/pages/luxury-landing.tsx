@@ -398,8 +398,6 @@ const CenterCard = memo(function CenterCard({ reduced }: { reduced: boolean }) {
         />
       </AnimatePresence>
 
-      {/* Green spectral glow — toned per mode via greenGlow token */}
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 72% 52% at 50% 40%, ${colors.greenGlow} 0%, transparent 66%)`, pointerEvents: "none", borderRadius: "inherit", opacity: 0.44 }} />
     </div>
   );
 });
