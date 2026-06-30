@@ -439,6 +439,7 @@ export function LuxuryNavbar() {
                 loading="eager"
               />
               <span style={{
+                display: "inline-flex", alignItems: "center",
                 fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.12em", fontSize: "1.375rem", lineHeight: 1,
                 background: isDark
                   ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
@@ -535,6 +536,7 @@ export function LuxuryNavbar() {
                   loading="eager"
                 />
                 <span style={{
+                  display: "inline-flex", alignItems: "center",
                   fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.13em", fontSize: "1.5rem", lineHeight: 1,
                   background: isDark
                     ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
