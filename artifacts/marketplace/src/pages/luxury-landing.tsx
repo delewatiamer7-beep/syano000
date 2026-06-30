@@ -54,67 +54,35 @@ const FONT_CSS = `
 
 /* ─── Responsive section grid rules ─────────────────────────────────────────*/
 const SECTION_CSS = `
-  .lux-cat-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  @media (min-width: 768px) { .lux-cat-grid { grid-template-columns: repeat(4, 1fr); } }
+  /* ── Category: 2-col mobile → 4-col desktop ─────────── */
+  .lux-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (min-width: 640px) { .lux-cat-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
 
-  .lux-deals-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  @media (min-width: 1024px) { .lux-deals-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
-
-  .lux-stores-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  @media (min-width: 640px)  { .lux-stores-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 1024px) { .lux-stores-grid { grid-template-columns: repeat(3, 1fr); } }
-
-  .lux-trending-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  @media (min-width: 640px) { .lux-trending-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
-
-  .lux-arrivals-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  @media (min-width: 640px) {
-    .lux-arrivals-grid { grid-template-columns: repeat(2, 1fr); }
-    .lux-arrival-main { grid-column: 1 / 3; }
-  }
-  @media (min-width: 1024px) {
-    .lux-arrivals-grid {
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      height: 35rem;
-    }
-    .lux-arrival-main { grid-column: 1 / 3; grid-row: 1 / 3; }
+  /* ── Deals bento: hero left + side cards right ───────── */
+  .lux-deals-bento { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 768px) {
+    .lux-deals-bento { grid-template-columns: 1.6fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; }
+    .lux-deals-hero  { grid-row: 1 / 3; }
   }
 
-  .lux-join-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-    max-width: 780px;
-    margin: 0 auto;
-  }
-  @media (min-width: 640px) { .lux-join-grid { grid-template-columns: repeat(2, 1fr); } }
+  /* ── Stores: 1 → 2 → 3 col ───────────────────────────── */
+  .lux-stores-row { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px)  { .lux-stores-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1024px) { .lux-stores-row { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
 
-  .lux-section-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 2rem;
+  /* ── Arrivals asymmetric bento ────────────────────────── */
+  .lux-arrivals-bento { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 768px) {
+    .lux-arrivals-bento { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr 1fr; min-height: 500px; }
+    .lux-arrivals-main  { grid-row: 1 / 3; }
   }
+
+  /* ── Join full-bleed split ────────────────────────────── */
+  .lux-join-split { display: grid; grid-template-columns: 1fr; }
+  @media (min-width: 768px) { .lux-join-split { grid-template-columns: 1fr 1fr; } }
+
+  /* ── Section inner ────────────────────────────────────── */
+  .lux-section-inner { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
   @media (min-width: 768px) { .lux-section-inner { padding: 0 3rem; } }
 
   .lux-footer-grid {
@@ -406,37 +374,33 @@ const CenterCard = memo(function CenterCard({ reduced }: { reduced: boolean }) {
    LUXURY SECTION HELPERS
 ═══════════════════════════════════════════════════════════════════════════*/
 
-/** Reusable section header: eyebrow + heading + "see all" link */
+/** Reusable section header: green-bar eyebrow + bold heading + "see all" link */
 function LuxSectionHeader({
-  eyebrowKey,
-  titleKey,
-  seeAllKey,
-  seeAllHref,
-  extra,
+  eyebrowKey, titleKey, seeAllKey, seeAllHref, extra,
 }: {
-  eyebrowKey: string;
-  titleKey:   string;
-  seeAllKey:  string;
-  seeAllHref: string;
-  extra?: React.ReactNode;
+  eyebrowKey: string; titleKey: string; seeAllKey: string; seeAllHref: string; extra?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const colors = useContext(LuxColorCtx);
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem", marginBottom: "3rem" }}>
-      <div>
-        <p style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.14em", color: colors.dimmed, textTransform: "uppercase", marginBottom: "0.6rem", margin: "0 0 0.6rem" }}>
-          {t(eyebrowKey)}
-        </p>
-        <h2 style={{ fontFamily: F.naskh, fontWeight: 700, fontSize: "clamp(1.5rem,3vw,2.4rem)", letterSpacing: "-0.02em", lineHeight: 1.2, color: colors.white, margin: 0 }}>
-          {t(titleKey)}
-        </h2>
-        {extra}
+    <div style={{ marginBottom: "3.5rem" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1.5rem", flexWrap: "wrap" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
+            <span style={{ display: "block", width: "2rem", height: "2px", background: colors.green, borderRadius: "9999px", flexShrink: 0 }} />
+            <p style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.18em", color: colors.green, textTransform: "uppercase", margin: 0 }}>
+              {t(eyebrowKey)}
+            </p>
+          </div>
+          <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.75rem,3.5vw,2.75rem)", letterSpacing: "-0.025em", lineHeight: 1.15, color: colors.white, margin: 0 }}>
+            {t(titleKey)}
+          </h2>
+          {extra}
+        </div>
+        <Link href={seeAllHref} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontFamily: F.sans, fontWeight: 700, fontSize: "0.78rem", letterSpacing: "0.04em", color: colors.muted, textDecoration: "none", paddingBottom: "0.2rem", borderBottom: `1px solid ${colors.border}`, flexShrink: 0, alignSelf: "flex-end" }}>
+          {t(seeAllKey)} <ArrowLeft style={{ width: 13, height: 13 }} />
+        </Link>
       </div>
-      <Link href={seeAllHref}
-        style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "0.4rem", color: colors.muted, textDecoration: "none", paddingBottom: "0.25rem", borderBottom: `1px solid ${colors.border}`, transition: "color 0.2s" }}>
-        {t(seeAllKey)} <ArrowLeft style={{ width: 14, height: 14 }} />
-      </Link>
     </div>
   );
 }
@@ -476,8 +440,8 @@ function LuxCountdownTimer() {
   );
 }
 
-/* ─── Luxury deal card ────────────────────────────────────────────────────────*/
-const LuxDealCard = memo(function LuxDealCard({ deal, index }: { deal: DealData; index: number }) {
+/* ─── Luxury deal card (hero = full-bleed tall; default = horizontal side) ───*/
+const LuxDealCard = memo(function LuxDealCard({ deal, index, hero = false }: { deal: DealData; index: number; hero?: boolean }) {
   const { t } = useTranslation();
   const { format } = useCurrency();
   const [, navigate] = useLocation();
@@ -517,60 +481,79 @@ const LuxDealCard = memo(function LuxDealCard({ deal, index }: { deal: DealData;
   const href = deal.id > 0 ? `/products/${deal.id}` : "/products";
   const hasDiscount = !!(deal.originalPrice && deal.discountPercent && deal.discountPercent > 0);
 
+  /* ── Hero variant: full-bleed tall image, overlay everything ── */
+  if (hero) {
+    return (
+      <motion.div
+        className="lux-deals-hero"
+        initial={{ opacity: 0, scale: 0.98 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.6, ease: fadeEase }}
+        style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: colors.card, minHeight: "420px" }}>
+        <Link href={href} style={{ display: "block", position: "absolute", inset: 0 }}>
+          {deal.img && <img src={deal.img} alt={deal.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.22) 45%, transparent 72%)" }} />
+          {hasDiscount && (
+            <div style={{ position: "absolute", top: "1.25rem", insetInlineEnd: "1.25rem" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "1rem", background: colors.green, color: "#fff", padding: "6px 14px", borderRadius: "9999px" }}>-{deal.discountPercent}%</span>
+            </div>
+          )}
+          <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "2rem" }}>
+            <p style={{ fontFamily: F.sans, fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.50)", margin: "0 0 0.5rem" }}>{deal.category}</p>
+            <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.25rem,2vw,1.75rem)", color: "#fff", margin: "0 0 1.25rem", lineHeight: 1.3 }}>{deal.name}</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "1.75rem", letterSpacing: "-0.03em", color: "#fff" }} translate="no">{format(deal.price)}</span>
+              {hasDiscount && <span style={{ fontFamily: F.sans, fontSize: "1rem", color: "rgba(255,255,255,0.38)", textDecoration: "line-through" }} translate="no">{format(deal.originalPrice!)}</span>}
+              <button onClick={handleAdd} disabled={adding} style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: "6px", background: "#ffffff", color: "#0a0a0a", border: "none", borderRadius: "9999px", padding: "10px 22px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", opacity: adding ? 0.7 : 1, flexShrink: 0 }}>
+                {adding ? <div style={{ width: 12, height: 12, border: "1.5px solid #0a0a0a", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : <ShoppingCart style={{ width: 13, height: 13 }} />}
+                {t("home.deals.add")}
+              </button>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+    );
+  }
+
+  /* ── Side variant: horizontal thumbnail + info ── */
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: 16 }}
+      whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.5, delay: index * 0.07, ease: fadeEase }}
-      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "16px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <Link href={href} style={{ display: "block", position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: colors.card2 }}>
-        {deal.img && <img src={deal.img} alt={deal.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.88) contrast(1.05)" }} />}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" }} />
-        {hasDiscount && (
-          <div style={{ position: "absolute", top: "10px", insetInlineEnd: "10px" }}>
-            <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.75rem", background: colors.green, color: "#FFFFFF", padding: "3px 10px", borderRadius: "9999px" }}>
-              -{deal.discountPercent}%
-            </span>
-          </div>
-        )}
-      </Link>
-      <div style={{ padding: "1rem 1.1rem 1.1rem", flex: 1, display: "flex", flexDirection: "column" }}>
-        <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "10px", color: colors.dimmed, marginBottom: "0.4rem", margin: "0 0 0.4rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          {deal.category}
-        </p>
-        <Link href={href}>
-          <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.9rem", lineHeight: 1.4, color: colors.white, margin: "0 0 0.85rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {deal.name}
-          </h3>
-        </Link>
-        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-          <div>
-            <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.1rem", letterSpacing: "-0.02em", color: colors.white }} translate="no">
-              {format(deal.price)}
+      transition={{ duration: 0.45, delay: index * 0.08, ease: fadeEase }}
+      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "16px", overflow: "hidden", display: "flex", flexDirection: "row" }}>
+      <Link href={href} style={{ display: "flex", width: "100%", textDecoration: "none" }}>
+        <div style={{ width: 130, minWidth: 130, flexShrink: 0, overflow: "hidden", background: colors.card2, position: "relative" }}>
+          {deal.img && <img src={deal.img} alt={deal.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+          {hasDiscount && (
+            <div style={{ position: "absolute", top: "8px", insetInlineEnd: "8px" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.68rem", background: colors.green, color: "#fff", padding: "2px 7px", borderRadius: "9999px" }}>-{deal.discountPercent}%</span>
             </div>
-            {hasDiscount && (
-              <div style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: colors.dimmed, textDecoration: "line-through", marginTop: "2px" }} translate="no">
-                {format(deal.originalPrice!)}
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleAdd}
-            disabled={adding}
-            style={{ display: "flex", alignItems: "center", gap: "5px", fontFamily: F.sans, fontWeight: 600, fontSize: "0.75rem", background: colors.greenAlpha, border: `1px solid ${colors.border}`, color: colors.muted, padding: "12px 14px", borderRadius: "9999px", flexShrink: 0, opacity: adding ? 0.5 : 1 }}>
-            {adding
-              ? <div style={{ width: 12, height: 12, border: `1.5px solid ${colors.muted}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-              : <ShoppingCart style={{ width: 12, height: 12 }} />}
-            {t("home.deals.add")}
-          </button>
+          )}
         </div>
-      </div>
+        <div style={{ flex: 1, padding: "1.1rem 1.25rem", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
+          <div>
+            <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", color: colors.dimmed, margin: "0 0 0.3rem" }}>{deal.category}</p>
+            <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.4, color: colors.white, margin: "0 0 0.5rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{deal.name}</h3>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+            <div>
+              <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.02em", color: colors.white }} translate="no">{format(deal.price)}</div>
+              {hasDiscount && <div style={{ fontFamily: F.sans, fontSize: "10px", color: colors.dimmed, textDecoration: "line-through", marginTop: "2px" }} translate="no">{format(deal.originalPrice!)}</div>}
+            </div>
+            <button onClick={handleAdd} disabled={adding} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.3)`, color: "#4ade80", flexShrink: 0, cursor: "pointer", opacity: adding ? 0.5 : 1 }}>
+              {adding ? <div style={{ width: 10, height: 10, border: `1.5px solid #4ade80`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : <ShoppingCart style={{ width: 13, height: 13 }} />}
+            </button>
+          </div>
+        </div>
+      </Link>
     </motion.div>
   );
 });
 
-/* ─── Luxury store card ───────────────────────────────────────────────────────*/
+/* ─── Luxury store card — full-bleed cinematic overlay ──────────────────────*/
 const LuxStoreCard = memo(function LuxStoreCard({ store, index }: { store: StoreDisplayData; index: number }) {
   const { t } = useTranslation();
   const colors = useContext(LuxColorCtx);
@@ -580,46 +563,38 @@ const LuxStoreCard = memo(function LuxStoreCard({ store, index }: { store: Store
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.55, delay: index * 0.1, ease: fadeEase }}
-      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "20px", overflow: "hidden" }}>
-      <div style={{ position: "relative", height: "10rem", overflow: "hidden", background: colors.card2 }}>
-        <img src={store.coverImg} alt={store.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.78) contrast(1.1)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 60%)" }} />
-        {store.verified && (
-          <div style={{ position: "absolute", top: "12px", insetInlineStart: "12px" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "5px", fontFamily: F.sans, fontWeight: 600, fontSize: "10px", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.30)`, color: "#4ade80", padding: "3px 10px", borderRadius: "9999px" }}>
-              <span style={{ width: 5, height: 5, background: "#4ade80", borderRadius: "50%", display: "inline-block" }} />
+      style={{ position: "relative", borderRadius: "20px", overflow: "hidden", aspectRatio: "4/3", background: colors.card }}>
+      <Link href={store.slug ? `/store/${store.slug}` : "/sellers/directory"} style={{ display: "block", position: "absolute", inset: 0, textDecoration: "none" }}>
+        <img src={store.coverImg} alt={store.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.28) 52%, transparent 82%)" }} />
+        {/* Top: verified badge + rating pill */}
+        <div style={{ position: "absolute", top: "1rem", insetInlineStart: "1rem", insetInlineEnd: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {store.verified ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: F.sans, fontWeight: 600, fontSize: "9px", letterSpacing: "0.06em", background: "rgba(22,163,74,0.22)", border: "1px solid rgba(22,163,74,0.35)", color: "#4ade80", padding: "3px 9px", borderRadius: "9999px", backdropFilter: "blur(8px)" }}>
+              <span style={{ width: 4, height: 4, background: "#4ade80", borderRadius: "50%", display: "inline-block" }} />
               {t("home.stores.verified")}
             </span>
-          </div>
-        )}
-      </div>
-      <div style={{ padding: "0 1.5rem 1.5rem", marginTop: "-2.25rem", position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "0.85rem" }}>
-          <div style={{ width: 56, height: 56, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", background: `${store.logoColor}18`, border: `2px solid ${store.logoColor}30`, boxShadow: `0 4px 24px ${store.logoColor}20` }}>
-            <span style={{ fontFamily: F.naskh, fontWeight: 900, fontSize: "1.35rem", color: store.logoColor }}>{store.logoInitial}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "4px" }}>
-            <Star style={{ width: 13, height: 13, fill: "#fbbf24", color: "#fbbf24" }} />
-            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.85rem", color: colors.white }}>{store.rating}</span>
-            <span style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: colors.dimmed }}>({store.reviews.toLocaleString()})</span>
-          </div>
-        </div>
-        <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.1rem", color: colors.white, margin: "0 0 0.35rem" }}>{store.name}</h3>
-        <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.8rem", color: colors.dimmed, lineHeight: 1.6, margin: "0 0 1rem" }}>{store.tagline}</p>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.85rem 0", borderTop: `1px solid ${colors.border}`, borderBottom: `1px solid ${colors.border}`, marginBottom: "1rem" }}>
-          <ShoppingBag style={{ width: 13, height: 13, color: colors.dimmed, flexShrink: 0 }} />
-          <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.8rem", color: colors.muted }}>
-            {t("home.stores.products_count", { count: store.productCount.toLocaleString() })}
+          ) : <span />}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.50)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: "9999px" }}>
+            <Star style={{ width: 11, height: 11, fill: "#fbbf24", color: "#fbbf24", flexShrink: 0 }} />
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.78rem", color: "#fff" }}>{store.rating}</span>
           </span>
-          <span style={{ width: 3, height: 3, background: colors.dimmed, borderRadius: "50%", flexShrink: 0 }} />
-          <span style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.8rem", color: colors.dimmed }}>{store.categoryLabel}</span>
         </div>
-        <Link
-          href={store.slug ? `/store/${store.slug}` : "/sellers/directory"}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", width: "100%", padding: "0.7rem", borderRadius: "9999px", background: "transparent", border: `1px solid ${colors.border}`, color: colors.muted, textDecoration: "none" }}>
-          <ExternalLink style={{ width: 13, height: 13 }} /> {t("home.stores.visit")}
-        </Link>
-      </div>
+        {/* Logo initial */}
+        <div style={{ position: "absolute", bottom: "4.25rem", insetInlineStart: "1.25rem" }}>
+          <div style={{ width: 42, height: 42, borderRadius: "12px", background: `${store.logoColor}22`, border: `1.5px solid ${store.logoColor}44`, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)" }}>
+            <span style={{ fontFamily: F.naskh, fontWeight: 900, fontSize: "1.15rem", color: store.logoColor }}>{store.logoInitial}</span>
+          </div>
+        </div>
+        {/* Bottom info */}
+        <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "1.1rem 1.25rem" }}>
+          <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.05rem", color: "#fff", margin: "0 0 0.2rem" }}>{store.name}</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.72rem", color: "rgba(255,255,255,0.52)", margin: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.tagline}</p>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.72rem", color: "#4ade80", flexShrink: 0, letterSpacing: "0.04em" }}>{t("home.stores.visit")} ›</span>
+          </div>
+        </div>
+      </Link>
     </motion.div>
   );
 });
@@ -631,12 +606,12 @@ const LuxStoreCard = memo(function LuxStoreCard({ store, index }: { store: Store
 /** Section wrapper style helper — takes colors from caller (via context) */
 const sectionStyle = (c: ColorTokens, alt = false): React.CSSProperties => ({
   background: alt ? c.card2 : c.bg,
-  paddingTop: "5rem",
-  paddingBottom: "5rem",
+  paddingTop: "6rem",
+  paddingBottom: "6rem",
   borderTop: `1px solid ${c.border}`,
 });
 
-/* ── 1. Popular Categories ───────────────────────────────────────────────────*/
+/* ── 1. Popular Categories — editorial numbered cards ────────────────────────*/
 const LuxCategoriesSection = memo(function LuxCategoriesSection() {
   const { t, i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
@@ -652,17 +627,23 @@ const LuxCategoriesSection = memo(function LuxCategoriesSection() {
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.48, delay: i * 0.05, ease: fadeEase }}>
               <Link href={`/shop?category=${encodeURIComponent(cat.slug)}`}
-                style={{ display: "block", position: "relative", overflow: "hidden", borderRadius: "16px", aspectRatio: "4 / 3", background: colors.card }}>
+                style={{ display: "block", position: "relative", overflow: "hidden", borderRadius: "20px", aspectRatio: "2 / 3", background: colors.card }}>
                 <img src={cat.img} alt={t(cat.nameKey)} loading="lazy" decoding="async"
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.72) saturate(0.80)", transition: "transform 0.6s ease" }} />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.20) 55%, transparent 100%)" }} />
-                <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 65% 45% at 50% 0%, ${cat.accent}22 0%, transparent 60%)` }} />
-                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "1.1rem 1rem 1rem" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: cat.accent, marginBottom: "0.45rem" }} />
-                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.95rem", color: "#FFFFFF", margin: "0 0 0.2rem" }}>
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.65s ease" }} />
+                {/* Deep gradient for text readability */}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.12) 52%, transparent 100%)" }} />
+                {/* Editorial number — top-right, large muted */}
+                <div style={{ position: "absolute", top: "0.5rem", insetInlineEnd: "0.6rem", fontFamily: F.sans, fontWeight: 900, fontSize: "clamp(2.5rem,5vw,4rem)", lineHeight: 1, color: "rgba(255,255,255,0.10)", letterSpacing: "-0.05em", userSelect: "none", pointerEvents: "none" }}>
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                {/* Accent dot */}
+                <span style={{ position: "absolute", insetInlineStart: "1rem", bottom: "3.6rem", width: 6, height: 6, borderRadius: "50%", background: cat.accent, display: "block" }} />
+                {/* Name + count */}
+                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "0.75rem 1rem 1rem" }}>
+                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.9rem", color: "#FFFFFF", margin: "0 0 0.2rem", letterSpacing: "0.01em" }}>
                     {t(cat.nameKey)}
                   </h3>
-                  <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.72rem", color: "rgba(255,255,255,0.55)", margin: 0 }}>
+                  <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.68rem", color: "rgba(255,255,255,0.46)", margin: 0 }}>
                     {t(cat.countKey)}
                   </p>
                 </div>
@@ -675,7 +656,7 @@ const LuxCategoriesSection = memo(function LuxCategoriesSection() {
   );
 });
 
-/* ── 2. Featured Deals ───────────────────────────────────────────────────────*/
+/* ── 2. Featured Deals — bento: hero left + 2 side cards right ───────────────*/
 const LuxDealsSection = memo(function LuxDealsSection({ deals }: { deals: DealData[] }) {
   const { i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
@@ -684,8 +665,9 @@ const LuxDealsSection = memo(function LuxDealsSection({ deals }: { deals: DealDa
     <section style={sectionStyle(colors, true)} dir={i18n.dir()}>
       <div className="lux-section-inner">
         <LuxSectionHeader eyebrowKey="home.deals.eyebrow" titleKey="home.deals.title" seeAllKey="home.deals.see_all" seeAllHref="/shop?hasDiscount=true" extra={<LuxCountdownTimer />} />
-        <div className="lux-deals-grid">
-          {deals.map((deal, i) => <LuxDealCard key={`${deal.id}-${i}`} deal={deal} index={i} />)}
+        <div className="lux-deals-bento">
+          {deals[0] && <LuxDealCard deal={deals[0]} index={0} hero />}
+          {deals.slice(1, 3).map((deal, i) => <LuxDealCard key={`${deal.id}-${i}`} deal={deal} index={i + 1} />)}
         </div>
       </div>
     </section>
@@ -738,7 +720,7 @@ const LuxStoresSection = memo(function LuxStoresSection() {
     <section style={sectionStyle(colors, false)} dir={i18n.dir()}>
       <div className="lux-section-inner">
         <LuxSectionHeader eyebrowKey="home.stores.eyebrow" titleKey="home.stores.title" seeAllKey="home.stores.see_all" seeAllHref="/sellers/directory" />
-        <div className="lux-stores-grid">
+        <div className="lux-stores-row">
           {displayStores.map((store, i) => <LuxStoreCard key={store.id} store={store} index={i} />)}
         </div>
       </div>
@@ -746,9 +728,9 @@ const LuxStoresSection = memo(function LuxStoresSection() {
   );
 });
 
-/* ── 4. Trending Products ────────────────────────────────────────────────────*/
+/* ── 4. Trending Products — ranked editorial list ────────────────────────────*/
 const LuxTrendingSection = memo(function LuxTrendingSection({ products }: { products: Product[] }) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const { format } = useCurrency();
   const colors = useContext(LuxColorCtx);
   if (products.length === 0) return null;
@@ -757,53 +739,43 @@ const LuxTrendingSection = memo(function LuxTrendingSection({ products }: { prod
     <section style={sectionStyle(colors, true)} dir={i18n.dir()}>
       <div className="lux-section-inner">
         <LuxSectionHeader eyebrowKey="home.trending.eyebrow" titleKey="home.trending.title" seeAllKey="home.trending.see_all" seeAllHref="/shop" />
-        <div className="lux-trending-grid">
+        <div style={{ display: "flex", flexDirection: "column" }}>
           {products.slice(0, 6).map((p, i) => {
-            const imgs = (p as { imageUrls?: string[] }).imageUrls;
+            const imgs      = (p as { imageUrls?: string[] }).imageUrls;
             const finalPrice = (p as { finalPrice?: number }).finalPrice ? Number((p as { finalPrice?: number }).finalPrice) : Number(p.price);
             const compareAt  = (p as { compareAtPrice?: number }).compareAtPrice ? Number((p as { compareAtPrice?: number }).compareAtPrice) : undefined;
             const discPct    = (p as { discountPercent?: number }).discountPercent ? Number((p as { discountPercent?: number }).discountPercent) : undefined;
             const storeName  = (p as { storeName?: string; sellerName?: string }).storeName ?? (p as { storeName?: string; sellerName?: string }).sellerName ?? "";
-            const isTrending = i % 3 !== 2;
 
             return (
               <motion.div key={`${p.id}-${i}`}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.48, delay: i * 0.06, ease: fadeEase }}
-                style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "16px", overflow: "hidden" }}>
-                <Link href={`/products/${p.id}`} style={{ display: "block", position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: colors.card2 }}>
-                  {imgs?.[0] && <img src={imgs[0]} alt={p.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.88)" }} />}
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 55%)" }} />
-                  {isTrending && (
-                    <div style={{ position: "absolute", top: "10px", insetInlineStart: "10px" }}>
-                      {/* Trending badge — green accent: bg=greenAlpha, border=green at 40% opacity, text=#4ade80 (light green) */}
-                      <span style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "10px", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.40)`, color: "#4ade80", padding: "3px 9px", borderRadius: "9999px", letterSpacing: "0.04em" }}>
-                        {t("home.trending.trending_badge")}
-                      </span>
-                    </div>
-                  )}
-                  {discPct && discPct > 0 && (
-                    <div style={{ position: "absolute", top: "10px", insetInlineEnd: "10px" }}>
-                      <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.72rem", background: colors.green, color: "#FFFFFF", padding: "2px 8px", borderRadius: "9999px" }}>
-                        -{discPct}%
-                      </span>
-                    </div>
-                  )}
-                </Link>
-                <div style={{ padding: "0.85rem 1rem 1rem" }}>
-                  {storeName && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "10px", color: colors.dimmed, margin: "0 0 0.3rem", letterSpacing: "0.05em", textTransform: "uppercase" }}>{storeName}</p>}
-                  <Link href={`/products/${p.id}`}>
-                    <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.4, color: colors.white, margin: "0 0 0.6rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                      {p.name}
-                    </h3>
-                  </Link>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-                    <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", color: colors.white }} translate="no">{format(finalPrice)}</span>
-                    {compareAt && <span style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: colors.dimmed, textDecoration: "line-through" }} translate="no">{format(compareAt)}</span>}
+                initial={{ opacity: 0, x: -16 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.42, delay: i * 0.05, ease: fadeEase }}>
+                <Link href={`/products/${p.id}`} style={{ display: "flex", alignItems: "center", gap: "1.5rem", padding: "1.25rem 0", borderBottom: `1px solid ${colors.border}`, textDecoration: "none" }}>
+                  {/* Rank number */}
+                  <div style={{ width: "2.5rem", flexShrink: 0, fontFamily: F.sans, fontWeight: 900, fontSize: "1.25rem", letterSpacing: "-0.04em", color: i < 3 ? colors.green : colors.dimmed, lineHeight: 1, textAlign: "center" }}>
+                    {String(i + 1).padStart(2, "0")}
                   </div>
-                </div>
+                  {/* Thumbnail */}
+                  <div style={{ width: 68, height: 68, borderRadius: "14px", overflow: "hidden", background: colors.card, flexShrink: 0, border: `1px solid ${colors.border}` }}>
+                    {imgs?.[0] && <img src={imgs[0]} alt={p.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {storeName && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", color: colors.dimmed, margin: "0 0 0.25rem" }}>{storeName}</p>}
+                    <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.95rem", color: colors.white, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</h3>
+                  </div>
+                  {/* Price + discount */}
+                  <div style={{ flexShrink: 0, textAlign: "end" }}>
+                    <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.02em", color: colors.white }} translate="no">{format(finalPrice)}</div>
+                    {compareAt && <div style={{ fontFamily: F.sans, fontSize: "11px", color: colors.dimmed, textDecoration: "line-through", marginTop: "2px" }} translate="no">{format(compareAt)}</div>}
+                    {discPct && discPct > 0 && (
+                      <span style={{ display: "inline-flex", marginTop: "4px", fontFamily: F.sans, fontWeight: 700, fontSize: "9px", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.30)`, color: "#4ade80", padding: "2px 7px", borderRadius: "9999px" }}>-{discPct}%</span>
+                    )}
+                  </div>
+                </Link>
               </motion.div>
             );
           })}
@@ -813,22 +785,19 @@ const LuxTrendingSection = memo(function LuxTrendingSection({ products }: { prod
   );
 });
 
-/* ── 5. New Arrivals ─────────────────────────────────────────────────────────*/
+/* ── 5. New Arrivals — asymmetric bento drop grid ────────────────────────────*/
 const LuxArrivalsSection = memo(function LuxArrivalsSection({ products }: { products: Product[] }) {
   const { t, i18n } = useTranslation();
   const { format } = useCurrency();
   const colors = useContext(LuxColorCtx);
   if (products.length < 4) return null;
 
-  const items = products.slice(0, 4).map((p, i) => {
+  const items = products.slice(0, 3).map((p, i) => {
     const imgs = (p as { imageUrls?: string[] }).imageUrls;
     return {
-      id: p.id,
-      name: p.name,
-      category: p.category ?? "",
+      id: p.id, name: p.name, category: p.category ?? "",
       price: (p as { finalPrice?: number }).finalPrice ? Number((p as { finalPrice?: number }).finalPrice) : Number(p.price),
-      daysAgo: Math.floor(i / 2) + 1,
-      img: imgs?.[0] ?? "",
+      daysAgo: Math.floor(i / 2) + 1, img: imgs?.[0] ?? "",
     };
   });
 
@@ -839,51 +808,51 @@ const LuxArrivalsSection = memo(function LuxArrivalsSection({ products }: { prod
     <section style={sectionStyle(colors, false)} dir={i18n.dir()}>
       <div className="lux-section-inner">
         <LuxSectionHeader eyebrowKey="home.arrivals.eyebrow" titleKey="home.arrivals.title" seeAllKey="home.arrivals.see_all" seeAllHref="/shop" />
-        <div className="lux-arrivals-grid">
-          {/* Main large card */}
-          <motion.div className="lux-arrival-main"
+        <div className="lux-arrivals-bento">
+          {/* Main large card — spans 2 rows on desktop */}
+          <motion.div className="lux-arrivals-main"
             initial={{ opacity: 0, scale: 0.97 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.6, ease: fadeEase }}
-            style={{ position: "relative", borderRadius: "20px", overflow: "hidden", background: colors.card, minHeight: "280px" }}>
-            <Link href={`/products/${main.id}`} style={{ display: "block", width: "100%", height: "100%" }}>
-              {main.img && <img src={main.img} alt={main.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.78) contrast(1.08)" }} />}
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.30) 50%, transparent 80%)" }} />
+            style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: colors.card, minHeight: "300px" }}>
+            <Link href={`/products/${main.id}`} style={{ display: "block", position: "absolute", inset: 0 }}>
+              {main.img && <img src={main.img} alt={main.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.18) 55%, transparent 82%)" }} />
               <div style={{ position: "absolute", top: "1.25rem", insetInlineStart: "1.25rem" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "5px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.72rem", background: colors.green, color: "#FFFFFF", padding: "5px 12px", borderRadius: "9999px" }}>
-                  <Zap style={{ width: 11, height: 11 }} /> {t("home.arrivals.new_since", { count: main.daysAgo })}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontFamily: F.sans, fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.04em", background: colors.green, color: "#fff", padding: "5px 12px", borderRadius: "9999px" }}>
+                  <Zap style={{ width: 10, height: 10 }} /> {t("home.arrivals.new_since", { count: main.daysAgo })}
                 </span>
               </div>
-              <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "1.75rem" }}>
-                {main.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "0.7rem", letterSpacing: "0.08em", color: "rgba(255,255,255,0.55)", textTransform: "uppercase", margin: "0 0 0.5rem" }}>{main.category}</p>}
-                <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.55rem", lineHeight: 1.3, letterSpacing: "-0.01em", color: "#FFFFFF", margin: "0 0 0.65rem" }}>{main.name}</h3>
-                <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.3rem", color: "#FFFFFF" }} translate="no">{format(main.price)}</span>
+              <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "2rem" }}>
+                {main.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "0.68rem", letterSpacing: "0.1em", color: "rgba(255,255,255,0.48)", textTransform: "uppercase", margin: "0 0 0.5rem" }}>{main.category}</p>}
+                <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.25rem,2.5vw,1.75rem)", lineHeight: 1.25, letterSpacing: "-0.01em", color: "#FFFFFF", margin: "0 0 0.75rem" }}>{main.name}</h3>
+                <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1.5rem", letterSpacing: "-0.03em", color: "#FFFFFF" }} translate="no">{format(main.price)}</span>
               </div>
             </Link>
           </motion.div>
 
-          {/* Small cards */}
+          {/* Side cards */}
           {rest.map((item, i) => (
             <motion.div key={item.id}
-              initial={{ opacity: 0, x: 16 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: fadeEase }}
-              style={{ position: "relative", borderRadius: "16px", overflow: "hidden", background: colors.card, minHeight: "180px" }}>
-              <Link href={`/products/${item.id}`} style={{ display: "block", width: "100%", height: "100%" }}>
-                {item.img && <img src={item.img} alt={item.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.75) contrast(1.08)" }} />}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 65%)" }} />
-                <div style={{ position: "absolute", top: "10px", insetInlineStart: "10px" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontFamily: F.sans, fontWeight: 700, fontSize: "9px", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.65)", padding: "3px 8px", borderRadius: "9999px", backdropFilter: "blur(6px)" }}>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+              transition={{ duration: 0.5, delay: 0.1 + i * 0.1, ease: fadeEase }}
+              style={{ position: "relative", borderRadius: "20px", overflow: "hidden", background: colors.card, minHeight: "180px" }}>
+              <Link href={`/products/${item.id}`} style={{ display: "block", position: "absolute", inset: 0 }}>
+                {item.img && <img src={item.img} alt={item.name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, transparent 62%)" }} />
+                <div style={{ position: "absolute", top: "0.75rem", insetInlineStart: "0.75rem" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: F.sans, fontWeight: 700, fontSize: "8px", letterSpacing: "0.04em", background: "rgba(0,0,0,0.50)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.68)", padding: "3px 8px", borderRadius: "9999px", backdropFilter: "blur(8px)" }}>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
                     {t("home.arrivals.ago", { count: item.daysAgo })}
                   </span>
                 </div>
-                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "0.85rem 1rem" }}>
-                  {item.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "9px", color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 0.3rem" }}>{item.category}</p>}
-                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.3, color: "#FFFFFF", margin: "0 0 0.4rem" }}>{item.name}</h3>
-                  <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", color: "#FFFFFF" }} translate="no">{format(item.price)}</span>
+                <div style={{ position: "absolute", bottom: 0, insetInlineStart: 0, insetInlineEnd: 0, padding: "0.85rem 1.1rem" }}>
+                  {item.category && <p style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "8px", color: "rgba(255,255,255,0.44)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 0.25rem" }}>{item.category}</p>}
+                  <h3 style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.88rem", lineHeight: 1.3, color: "#FFFFFF", margin: "0 0 0.35rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h3>
+                  <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", letterSpacing: "-0.02em", color: "#FFFFFF" }} translate="no">{format(item.price)}</span>
                 </div>
               </Link>
             </motion.div>
@@ -894,7 +863,7 @@ const LuxArrivalsSection = memo(function LuxArrivalsSection({ products }: { prod
   );
 });
 
-/* ── 6. Join Section ─────────────────────────────────────────────────────────*/
+/* ── 6. Join Section — full-bleed two-column split ───────────────────────────*/
 const LuxJoinSection = memo(function LuxJoinSection() {
   const { t, i18n } = useTranslation();
   const { handleOpenYourStore } = useSellerOnboarding();
@@ -902,72 +871,58 @@ const LuxJoinSection = memo(function LuxJoinSection() {
   const colors = useContext(LuxColorCtx);
 
   return (
-    <section style={sectionStyle(colors, true)} dir={i18n.dir()}>
-      <div className="lux-section-inner">
-        <div style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: colors.card, border: `1px solid ${colors.border}` }}>
-          {/* Background glows */}
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            <div style={{ position: "absolute", inset: 0, opacity: 0.035, backgroundImage: `linear-gradient(${colors.border} 1px, transparent 1px), linear-gradient(90deg, ${colors.border} 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
-            {/* Green ambient blur — replaces former purple glow */}
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "600px", height: "280px", borderRadius: "50%", background: colors.greenGlow, filter: "blur(100px)" }} />
-          </div>
-
-          <div style={{ position: "relative", zIndex: 1, padding: "4rem 2rem" }}>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: fadeEase }}
-              style={{ textAlign: "center", marginBottom: "3rem" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: F.sans, fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.1em", color: colors.muted, textTransform: "uppercase", background: colors.greenAlpha, border: `1px solid ${colors.border}`, padding: "5px 14px", borderRadius: "9999px", marginBottom: "1.25rem" }}>
-                {t("home.join.badge")}
-              </span>
-              <h2 style={{ fontFamily: F.naskh, fontWeight: 700, fontSize: "clamp(1.5rem,3.5vw,2.75rem)", letterSpacing: "-0.02em", lineHeight: 1.2, color: colors.white, margin: "0 0 1rem" }}>
-                {t("home.join.title")}
-              </h2>
-              <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.95rem", lineHeight: 1.7, color: colors.muted, maxWidth: "480px", margin: "0 auto" }}>
-                {t("home.join.subtitle")}
-              </p>
-            </motion.div>
-
-            <div className="lux-join-grid">
-              {/* Seller card — green accent border + icon */}
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55, delay: 0.1, ease: fadeEase }}
-                onClick={handleOpenYourStore}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenYourStore(); } }}
-                role="button"
-                tabIndex={0}
-                style={{ background: colors.card2, border: `1px solid rgba(22,163,74,0.22)`, borderRadius: "18px", padding: "1.75rem", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 80% 60% at 50% 110%, ${colors.greenAlpha} 0%, transparent 70%)`, pointerEvents: "none" }} />
-                <div style={{ position: "relative", zIndex: 1 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "14px", background: colors.greenAlpha, border: `1px solid rgba(22,163,74,0.25)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem" }}>
-                    <Store style={{ width: 22, height: 22, color: "#4ade80" }} />
-                  </div>
-                  <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.2rem", color: colors.white, margin: "0 0 0.5rem" }}>{t("home.join.seller_title")}</h3>
-                  <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.85rem", lineHeight: 1.65, color: colors.muted, margin: "0 0 1.25rem" }}>{t("home.join.seller_desc")}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4ade80" }}>
-                    <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.85rem" }}>{t("home.join.seller_cta")}</span>
-                    <ArrowLeft style={{ width: 14, height: 14 }} />
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Courier card */}
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55, delay: 0.2, ease: fadeEase }}
-                onClick={handleBecomeCourier}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleBecomeCourier(); } }}
-                role="button"
-                tabIndex={0}
-                style={{ background: colors.card2, border: `1px solid ${colors.border}`, borderRadius: "18px", padding: "1.75rem", cursor: "pointer" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "14px", background: colors.greenAlpha, border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem" }}>
-                  <Bike style={{ width: 22, height: 22, color: colors.muted }} />
-                </div>
-                <h3 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "1.2rem", color: colors.white, margin: "0 0 0.5rem" }}>{t("home.join.courier_title")}</h3>
-                <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.85rem", lineHeight: 1.65, color: colors.muted, margin: "0 0 1.25rem" }}>{t("home.join.courier_desc")}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: colors.dimmed }}>
-                  <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.85rem" }}>{t("home.join.courier_cta")}</span>
-                  <ArrowLeft style={{ width: 14, height: 14 }} />
-                </div>
-              </motion.div>
+    <section style={{ borderTop: `1px solid ${colors.border}`, overflow: "hidden" }} dir={i18n.dir()}>
+      <div className="lux-join-split">
+        {/* ── Seller half — deep green ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: fadeEase }}
+          onClick={handleOpenYourStore}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenYourStore(); } }}
+          role="button" tabIndex={0}
+          style={{ position: "relative", padding: "5rem 3rem", background: "linear-gradient(145deg, hsl(120,52%,11%) 0%, hsl(142,60%,16%) 100%)", cursor: "pointer", overflow: "hidden", minHeight: "420px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          {/* Dot texture */}
+          <div style={{ position: "absolute", inset: 0, opacity: 0.07, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "28px 28px", pointerEvents: "none" }} />
+          {/* Soft ambient glow */}
+          <div style={{ position: "absolute", top: "-5rem", insetInlineEnd: "-4rem", width: "22rem", height: "22rem", borderRadius: "50%", background: "rgba(34,197,94,0.14)", filter: "blur(72px)", pointerEvents: "none" }} />
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "16px", background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.75rem" }}>
+              <Store style={{ width: 24, height: 24, color: "#86efac" }} />
+            </div>
+            <p style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(134,239,172,0.75)", margin: "0 0 0.75rem" }}>{t("home.join.badge")}</p>
+            <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.5rem,2.8vw,2.25rem)", letterSpacing: "-0.02em", lineHeight: 1.2, color: "#ffffff", margin: "0 0 1rem" }}>{t("home.join.seller_title")}</h2>
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.875rem", lineHeight: 1.75, color: "rgba(255,255,255,0.58)", margin: "0 0 2.25rem", maxWidth: "340px" }}>{t("home.join.seller_desc")}</p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", fontFamily: F.sans, fontWeight: 700, fontSize: "0.85rem", color: "#86efac", borderBottom: "1px solid rgba(134,239,172,0.30)", paddingBottom: "2px" }}>
+              {t("home.join.seller_cta")} <ArrowLeft style={{ width: 14, height: 14 }} />
             </div>
           </div>
-        </div>
+        </motion.div>
+
+        {/* ── Courier half — dark neutral ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.15, ease: fadeEase }}
+          onClick={handleBecomeCourier}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleBecomeCourier(); } }}
+          role="button" tabIndex={0}
+          style={{ position: "relative", padding: "5rem 3rem", background: colors.card2, cursor: "pointer", overflow: "hidden", minHeight: "420px", display: "flex", flexDirection: "column", justifyContent: "flex-end", borderTop: `1px solid ${colors.border}` }}>
+          <div style={{ position: "absolute", top: "-4rem", insetInlineStart: "-3rem", width: "18rem", height: "18rem", borderRadius: "50%", background: colors.greenGlow, filter: "blur(88px)", pointerEvents: "none", opacity: 0.55 }} />
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ width: 52, height: 52, borderRadius: "16px", background: colors.greenAlpha, border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.75rem" }}>
+              <Bike style={{ width: 24, height: 24, color: colors.muted }} />
+            </div>
+            <p style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.68rem", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.green, margin: "0 0 0.75rem" }}>{t("home.join.badge")}</p>
+            <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(1.5rem,2.8vw,2.25rem)", letterSpacing: "-0.02em", lineHeight: 1.2, color: colors.white, margin: "0 0 1rem" }}>{t("home.join.courier_title")}</h2>
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.875rem", lineHeight: 1.75, color: colors.muted, margin: "0 0 2.25rem", maxWidth: "340px" }}>{t("home.join.courier_desc")}</p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", fontFamily: F.sans, fontWeight: 700, fontSize: "0.85rem", color: colors.green, borderBottom: `1px solid ${colors.border}`, paddingBottom: "2px" }}>
+              {t("home.join.courier_cta")} <ArrowLeft style={{ width: 14, height: 14 }} />
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
