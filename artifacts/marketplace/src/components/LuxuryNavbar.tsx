@@ -60,6 +60,15 @@ const DROP_BG   = "rgba(14,14,16,0.98)";
    Fixed across both light and dark themes (--primary is theme-invariant).
    White text on this green = 6.45:1 → WCAG AA all sizes. ─────────────────*/
 const NAV_GREEN = "hsl(114, 50%, 26%)";
+/* ── Premium glass surface tokens ─────────────────────────────────────────────*/
+const NAV_BG_DARK  = "rgba(10,10,12,0.90)";
+const NAV_BG_LIGHT = "rgba(252,252,254,0.90)";
+const NAV_SHADOW_D = "0 8px 48px rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.05)";
+const NAV_SHADOW_L = "0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(0,0,0,0.05)";
+const BTN_GRADIENT = "linear-gradient(135deg, hsl(114,52%,23%) 0%, hsl(142,56%,30%) 100%)";
+const BTN_SHADOW   = "0 4px 18px rgba(22,163,74,0.42), 0 1px 4px rgba(22,163,74,0.18)";
+const BTN_SHADOW_H = "0 6px 28px rgba(22,163,74,0.58), 0 2px 10px rgba(22,163,74,0.28)";
+const ACCENT_LINE  = "linear-gradient(90deg, transparent 0%, rgba(22,163,74,0.55) 20%, rgba(34,197,94,1.0) 50%, rgba(22,163,74,0.55) 80%, transparent 100%)";
 
 /* ── Fonts ────────────────────────────────────────────────────────────────────*/
 const F_NASKH = "'Noto Naskh Arabic', serif";
@@ -170,6 +179,7 @@ export function LuxuryNavbar() {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [selectedZoneId,  setSelectedZoneId]  = useState<number | null>(loadSavedZoneId);
   const [highlightedIdx,  setHighlightedIdx]  = useState(-1);
+  const [scrolled,        setScrolled]        = useState(false);
 
   const debouncedQ    = useDebounce(searchQuery, 200);
   const searchRef     = useRef<HTMLDivElement>(null);
@@ -221,6 +231,13 @@ export function LuxuryNavbar() {
   const switchLang = (l: string) => { i18n.changeLanguage(l); applyDirection(l); };
   useEffect(() => { applyDirection(i18n.language); }, [i18n.language]);
   useEffect(() => { if (searchOpen && inputRef.current) inputRef.current.focus(); }, [searchOpen]);
+
+  /* Scroll shadow */
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 6);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   /* Mobile scroll-lock */
   useEffect(() => {
@@ -368,6 +385,23 @@ export function LuxuryNavbar() {
 
   return (
     <>
+      {/* ── Global navbar animations ──────────────────────────────────────────── */}
+      <style>{`
+        @keyframes syano-accent-shimmer {
+          0%,100% { opacity: 0.85; }
+          50%      { opacity: 1; }
+        }
+        @keyframes syano-btn-glow {
+          0%,100% { box-shadow: 0 4px 18px rgba(22,163,74,0.42), 0 1px 4px rgba(22,163,74,0.18); }
+          50%     { box-shadow: 0 6px 28px rgba(22,163,74,0.62), 0 2px 10px rgba(22,163,74,0.28); }
+        }
+        .syano-login-btn { animation: syano-btn-glow 3s ease-in-out infinite; }
+        .syano-login-btn:hover { animation: none !important; }
+        .syano-icon-btn { transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease !important; }
+        .syano-icon-btn:hover { transform: scale(1.08) !important; }
+        .syano-icon-btn:active { transform: scale(0.94) !important; }
+      `}</style>
+
       {/* Floating header — fixed to viewport top */}
       <header
         style={{
@@ -378,10 +412,17 @@ export function LuxuryNavbar() {
           width: "100%",
           zIndex: 1000,
           fontFamily: F_SANS,
-          background: "hsl(var(--background))",
-        borderBottom: "1px solid hsl(var(--border))",
+          background: isDark ? NAV_BG_DARK : NAV_BG_LIGHT,
+          backdropFilter: "blur(22px) saturate(180%)",
+          WebkitBackdropFilter: "blur(22px) saturate(180%)",
+          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
+          boxShadow: scrolled ? (isDark ? NAV_SHADOW_D : NAV_SHADOW_L) : "none",
+          transition: "box-shadow 0.3s ease",
         }}
       >
+        {/* ── Top gradient accent line with shimmer ─────────────────────────── */}
+        <div aria-hidden="true" style={{ position: "absolute", top: 0, insetInlineStart: 0, insetInlineEnd: 0, height: "2px", background: ACCENT_LINE, pointerEvents: "none", zIndex: 2, animation: "syano-accent-shimmer 4s ease-in-out infinite" }} />
+
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
 
           {/* ══ MOBILE TOP BAR (< md) ════════════════════════════════════════ */}
@@ -394,10 +435,18 @@ export function LuxuryNavbar() {
               <img
                 src="/syano-logo.png" alt="" width={40} height={40}
                 className="object-contain shrink-0"
-                style={{ height: 40, width: 40, filter: "drop-shadow(0 0 8px rgba(255,255,255,0.15))" }}
+                style={{ height: 40, width: 40, filter: isDark ? "drop-shadow(0 0 10px rgba(34,197,94,0.25))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.15))" }}
                 loading="eager"
               />
-              <span style={{ fontFamily: F_NASKH, fontWeight: 800, letterSpacing: "0.1em", fontSize: "1.375rem", lineHeight: 1, color: navFg }}>
+              <span style={{
+                fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.12em", fontSize: "1.375rem", lineHeight: 1,
+                background: isDark
+                  ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
+                  : "linear-gradient(135deg, #0f172a 0%, #15803d 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>
                 SYANO
               </span>
             </Link>
@@ -482,10 +531,19 @@ export function LuxuryNavbar() {
               >
                 <img
                   src="/syano-logo.png" alt="Syano" width={44} height={44}
-                  style={{ height: 44, width: 44, objectFit: "contain", flexShrink: 0 }}
+                  style={{ height: 44, width: 44, objectFit: "contain", flexShrink: 0, filter: isDark ? "drop-shadow(0 0 12px rgba(34,197,94,0.28))" : "drop-shadow(0 2px 8px rgba(0,0,0,0.14))" }}
                   loading="eager"
                 />
-                <span style={{ fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.1em", fontSize: "1.5rem", lineHeight: 1, color: navFg }}>
+                <span style={{
+                  fontFamily: F_NASKH, fontWeight: 900, letterSpacing: "0.13em", fontSize: "1.5rem", lineHeight: 1,
+                  background: isDark
+                    ? "linear-gradient(135deg, #ffffff 0%, #bbf7d0 100%)"
+                    : "linear-gradient(135deg, #0f172a 0%, #15803d 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: isDark ? "drop-shadow(0 0 8px rgba(134,239,172,0.35))" : "none",
+                }}>
                   SYANO
                 </span>
               </a>
@@ -528,12 +586,14 @@ export function LuxuryNavbar() {
                       gap: "0.5rem",
                       height: "2.75rem",
                       padding: "0 1rem",
-                      borderRadius: "9999px",
+                      borderRadius: "14px",
                       background: searchBg_,
-                      border: `1px solid ${searchOpen ? navBorderH_ : navBorder_}`,
-                      transition: "background 0.2s, border-color 0.2s, box-shadow 0.2s",
+                      border: `1px solid ${searchOpen ? "rgba(22,163,74,0.50)" : navBorder_}`,
+                      transition: "background 0.2s, border-color 0.25s, box-shadow 0.25s",
                       width: "100%",
-                      boxShadow: searchOpen ? `0 0 0 2px ${iconHovBg_}` : "none",
+                      boxShadow: searchOpen
+                        ? "0 0 0 2.5px rgba(22,163,74,0.20), 0 4px 20px rgba(0,0,0,0.14)"
+                        : "none",
                     }}
                     onMouseEnter={e => { if (!searchOpen) (e.currentTarget as HTMLElement).style.background = searchBgHov_; }}
                     onMouseLeave={e => { if (!searchOpen) (e.currentTarget as HTMLElement).style.background = searchBg_; }}
@@ -906,7 +966,7 @@ export function LuxuryNavbar() {
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = searchBgHov_; (e.currentTarget as HTMLElement).style.borderColor = navBorderH_; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = searchBg_; (e.currentTarget as HTMLElement).style.borderColor = navBorder_; }}
                     >
-                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: GREEN, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: BTN_GRADIENT, boxShadow: "0 2px 8px rgba(22,163,74,0.38)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <span style={{ fontFamily: F_NASKH, fontSize: "11px", fontWeight: 900, color: WHITE }}>
                           {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
                         </span>
@@ -975,15 +1035,18 @@ export function LuxuryNavbar() {
               ) : (
                 <motion.button
                   onClick={openLogin}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="syano-login-btn"
                   style={{
                     fontFamily: F_SANS, fontSize: "0.8125rem", fontWeight: 700,
-                    padding: "0.45rem 1.25rem", borderRadius: 9999,
-                    background: "hsl(var(--primary))", color: "#ffffff",
+                    padding: "0.5rem 1.375rem", borderRadius: 9999,
+                    background: BTN_GRADIENT, color: "#ffffff",
                     cursor: "pointer", whiteSpace: "nowrap",
-                    border: "none", letterSpacing: "0.01em",
+                    border: "none", letterSpacing: "0.025em",
                   }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = BTN_SHADOW_H; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ""; }}
                 >
                   {t("nav.login")}
                 </motion.button>
@@ -1081,8 +1144,8 @@ export function LuxuryNavbar() {
               {isAuthenticated ? (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0.75rem 0.75rem" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)", border: `1px solid ${sPanelSep}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontFamily: F_NASKH, fontSize: "14px", fontWeight: 900, color: aDropFg }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: BTN_GRADIENT, boxShadow: "0 2px 10px rgba(22,163,74,0.38)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontFamily: F_NASKH, fontSize: "14px", fontWeight: 900, color: WHITE }}>
                         {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
                       </span>
                     </div>
@@ -1101,7 +1164,7 @@ export function LuxuryNavbar() {
                 </>
               ) : (
                 <button onClick={() => { closeMobile(); openLogin(); }}
-                  style={{ fontFamily: F_SANS, fontWeight: 700, fontSize: "0.875rem", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 44, borderRadius: 12, background: "hsl(var(--primary))", color: "#ffffff", border: "none", cursor: "pointer" }}>
+                  style={{ fontFamily: F_SANS, fontWeight: 700, fontSize: "0.875rem", letterSpacing: "0.025em", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 44, borderRadius: 12, background: BTN_GRADIENT, color: "#ffffff", border: "none", cursor: "pointer", boxShadow: BTN_SHADOW }}>
                   {t("nav.login")}
                 </button>
               )}
