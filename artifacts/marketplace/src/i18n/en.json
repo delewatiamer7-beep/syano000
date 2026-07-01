@@ -126,6 +126,34 @@
       "ago": "{{count}} days ago",
       "reviews": "reviews"
     },
+    "widget": {
+      "by_price": "Shop by price",
+      "elec_phones": "Smartphones",
+      "elec_laptops": "Laptops",
+      "elec_audio": "Headphones",
+      "elec_tablets": "Tablets",
+      "fashion_women": "Women",
+      "fashion_men": "Men",
+      "fashion_bags": "Bags",
+      "fashion_accessories": "Accessories",
+      "home_furniture": "Furniture",
+      "home_kitchen": "Kitchen",
+      "home_decor_label": "Décor",
+      "home_lighting": "Lighting",
+      "price_under25": "Under $25",
+      "price_under50": "Under $50",
+      "price_under100": "Under $100",
+      "price_over100": "$100 & Over"
+    },
+    "bestSellers": {
+      "title": "Best Sellers",
+      "badge": "#1 Best Seller",
+      "see_all": "View all Best Sellers"
+    },
+    "carousel": {
+      "prev": "Previous",
+      "next": "Next"
+    },
     "stores": {
       "eyebrow": "Our Business Partners",
       "title": "Trusted Stores",

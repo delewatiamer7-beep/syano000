@@ -126,6 +126,34 @@
       "ago": "منذ {{count}} أيام",
       "reviews": "تقييم"
     },
+    "widget": {
+      "by_price": "تسوّق حسب السعر",
+      "elec_phones": "هواتف ذكية",
+      "elec_laptops": "لابتوبات",
+      "elec_audio": "سماعات",
+      "elec_tablets": "أجهزة لوحية",
+      "fashion_women": "للنساء",
+      "fashion_men": "للرجال",
+      "fashion_bags": "حقائب",
+      "fashion_accessories": "إكسسوارات",
+      "home_furniture": "أثاث",
+      "home_kitchen": "مطبخ",
+      "home_decor_label": "ديكور",
+      "home_lighting": "إضاءة",
+      "price_under25": "أقل من 25$",
+      "price_under50": "أقل من 50$",
+      "price_under100": "أقل من 100$",
+      "price_over100": "100$ وأكثر"
+    },
+    "bestSellers": {
+      "title": "الأكثر مبيعاً",
+      "badge": "#1 الأكثر مبيعاً",
+      "see_all": "عرض كل الأكثر مبيعاً"
+    },
+    "carousel": {
+      "prev": "السابق",
+      "next": "التالي"
+    },
     "stores": {
       "eyebrow": "شركاؤنا التجاريون",
       "title": "متاجر موثوقة",
