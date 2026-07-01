@@ -510,11 +510,11 @@ const AmzProductCard = memo(function AmzProductCard({
   return (
     <Link href={`/products/${id}`} style={{ display: "block", textDecoration: "none", height: "100%" }}>
       <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 4, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-        {/* ── Product image — no gradient, clean white bg ── */}
-        <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+        {/* ── Product image ── */}
+        <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: colors.card, flexShrink: 0 }}>
           {img
             ? <img src={img} alt={name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
-            : <div style={{ position: "absolute", inset: 0, background: "#f0f0f0" }} />
+            : <div style={{ position: "absolute", inset: 0, background: colors.card2 }} />
           }
           {/* Discount badge */}
           {isDeal && (
@@ -572,6 +572,7 @@ const AmzProductCard = memo(function AmzProductCard({
 function AmzCarouselRow({ items }: { items: CarouselProduct[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const colors = useContext(LuxColorCtx);
 
   const scroll = (dir: -1 | 1) =>
     trackRef.current?.scrollBy({ left: dir * 220, behavior: "smooth" });
@@ -579,10 +580,10 @@ function AmzCarouselRow({ items }: { items: CarouselProduct[] }) {
   const arrowBtn: React.CSSProperties = {
     position: "absolute", top: "50%", transform: "translateY(-50%)",
     zIndex: 10, width: 40, height: 40, borderRadius: "50%",
-    background: "rgba(255,255,255,0.97)",
-    border: "1px solid #D5D9D9",
+    background: colors.card,
+    border: `1px solid ${colors.border}`,
     boxShadow: "0 2px 5px 0 rgba(15,17,17,.20)",
-    color: "#0F1111", fontSize: "1.4rem", lineHeight: 1,
+    color: colors.white, fontSize: "1.4rem", lineHeight: 1,
     cursor: "pointer", padding: 0,
   };
   return (
@@ -610,17 +611,18 @@ function AmzWidgetPanel({
   index: number;
 }) {
   const { t } = useTranslation();
+  const colors = useContext(LuxColorCtx);
   return (
-    <div style={{ background: "#FFFFFF", borderRadius: 4, display: "flex", flexDirection: "column", overflow: "hidden", padding: "14px 14px 10px" }}>
+    <div style={{ background: colors.card, borderRadius: 4, display: "flex", flexDirection: "column", overflow: "hidden", padding: "14px 14px 10px" }}>
       {/* Bold title */}
-      <h2 style={{ fontFamily: F.naskh, fontWeight: 700, fontSize: "clamp(0.9rem,1.6vw,1.05rem)", color: "#0F1111", margin: "0 0 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <h2 style={{ fontFamily: F.naskh, fontWeight: 700, fontSize: "clamp(0.9rem,1.6vw,1.05rem)", color: colors.white, margin: "0 0 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         {t(panel.titleKey)}
       </h2>
       {/* 2×2 image grid */}
       <div className="amz-widget-2x2" style={{ flex: 1, gap: 6 }}>
         {panel.items.map((item, i) => (
           <Link key={i} href={panel.seeAllHref} style={{ display: "block", textDecoration: "none" }}>
-            <div style={{ aspectRatio: "1/1", overflow: "hidden", borderRadius: 3, background: "#F0F2F2" }}>
+            <div style={{ aspectRatio: "1/1", overflow: "hidden", borderRadius: 3, background: colors.card2 }}>
               <img
                 src={item.img}
                 alt={t(item.labelKey)}
@@ -629,15 +631,15 @@ function AmzWidgetPanel({
                 style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
               />
             </div>
-            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: "#0F1111", margin: "4px 0 6px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: colors.white, margin: "4px 0 6px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {t(item.labelKey)}
             </p>
           </Link>
         ))}
       </div>
-      {/* "See more" link — Amazon teal */}
+      {/* "See more" link */}
       <div style={{ marginTop: 8 }}>
-        <Link href={panel.seeAllHref} style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.8rem", color: "#007185", textDecoration: "none" }}>
+        <Link href={panel.seeAllHref} style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.8rem", color: colors.green, textDecoration: "none" }}>
           {t("home.categories.see_all")} →
         </Link>
       </div>
@@ -645,9 +647,10 @@ function AmzWidgetPanel({
   );
 }
 
-/** Countdown timer for deals section — Amazon red style */
+/** Countdown timer for deals section */
 function LuxCountdownTimer() {
   const { t } = useTranslation();
+  const colors = useContext(LuxColorCtx);
   const [time, setTime] = useState({ h: 8, m: 24, s: 37 });
   useEffect(() => {
     const id = setInterval(() => {
@@ -662,11 +665,11 @@ function LuxCountdownTimer() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
       <Timer style={{ width: 13, height: 13, color: "#CC0C39", flexShrink: 0 }} />
-      <span style={{ fontFamily: F.sans, fontSize: "0.75rem", color: "#565959" }}>{t("home.deals.ends_in")}</span>
+      <span style={{ fontFamily: F.sans, fontSize: "0.75rem", color: colors.muted }}>{t("home.deals.ends_in")}</span>
       <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
         {[pad(time.h), pad(time.m), pad(time.s)].map((val, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", fontVariantNumeric: "tabular-nums", color: "#CC0C39", background: "#FFF0EE", border: "1px solid #FFBDAD", padding: "1px 6px", borderRadius: 3, minWidth: "1.8rem", textAlign: "center" }}>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", fontVariantNumeric: "tabular-nums", color: "#CC0C39", background: colors.greenAlpha, border: `1px solid ${colors.border}`, padding: "1px 6px", borderRadius: 3, minWidth: "1.8rem", textAlign: "center" }}>
               {val}
             </span>
             {i < 2 && <span style={{ color: "#CC0C39", fontWeight: 700, fontSize: "0.9rem", lineHeight: 1 }}>:</span>}
