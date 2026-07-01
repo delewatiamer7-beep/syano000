@@ -184,6 +184,24 @@ const CL = {
   greenGlow:  "rgba(22,163,74,0.14)",
 } as const;
 
+/* ─── Amazon palette — used for mid-page sections (widget/carousel/stores) ───
+   Exactly matches Amazon.com: #EAEDED gray page, white panels, near-black text,
+   Amazon teal #007185 for links, red #B12704 for prices.                      */
+const CA = {
+  bg:         "#EAEDED",
+  card:       "#FFFFFF",
+  card2:      "#F0F2F2",
+  white:      "#0F1111",
+  offWhite:   "#111111",
+  muted:      "#565959",
+  dimmed:     "#888C8C",
+  border:     "#DDDDDD",
+  borderHov:  "#AAAAAA",
+  green:      "#007185",
+  greenAlpha: "rgba(0,113,133,0.08)",
+  greenGlow:  "rgba(0,113,133,0.15)",
+} as const;
+
 /* ─── Color token type — string-valued so both C (dark) and CL (light) fit ─*/
 type ColorTokens = { [K in keyof typeof C]: string };
 
@@ -447,8 +465,8 @@ function AmzSectionHeader({ title, seeAllKey, seeAllHref }: { title: string; see
 }
 
 /* ─── Amazon-style product card ──────────────────────────────────────────────
-   Image dominant square, price in green, discount badge top-right.
-   Optional rank badge (top-left) for best-sellers section.                  */
+   White panel, clean image, star rating row, red deal price.
+   Matches Amazon.com product card layout exactly.                            */
 const AmzProductCard = memo(function AmzProductCard({
   id, name, price, originalPrice, discountPercent, img, category, rank,
 }: {
@@ -456,37 +474,68 @@ const AmzProductCard = memo(function AmzProductCard({
   discountPercent?: number | null; img: string; category: string; rank?: number;
 }) {
   const { format } = useCurrency();
+  const { t } = useTranslation();
   const colors = useContext(LuxColorCtx);
+  /* Pseudo-random rating seeded from product id: 3.8 – 4.9 */
+  const rating  = Math.round((3.8 + (id % 11) * 0.1) * 10) / 10;
+  const reviews = ((id * 137 + 23) % 8800) + 120;
+  const fullStars  = Math.floor(rating);
+  const halfStar   = rating - fullStars >= 0.5;
+  const isDeal     = !!(discountPercent && discountPercent > 0);
+  const priceColor = isDeal ? "#B12704" : colors.white;
+
   return (
     <Link href={`/products/${id}`} style={{ display: "block", textDecoration: "none", height: "100%" }}>
-      <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 2px 6px rgba(0,0,0,0.11)", height: "100%", display: "flex", flexDirection: "column", transition: "box-shadow 0.2s, transform 0.18s" }}>
-        {/* Square image */}
-        <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: colors.card2, flexShrink: 0 }}>
-          {img && <img src={img} alt={name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.45s" }} />}
-          {/* Rank badge (top-start) */}
-          {rank !== undefined && (
-            <div style={{ position: "absolute", top: 8, insetInlineStart: 8, width: 26, height: 26, borderRadius: "50%", background: rank < 3 ? colors.green : colors.card, border: rank < 3 ? "none" : `1.5px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
-              <span style={{ fontFamily: F.sans, fontWeight: 900, fontSize: "0.65rem", color: rank < 3 ? "#fff" : colors.muted }}>{rank + 1}</span>
+      <div className="amz-card-hover" style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 4, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
+        {/* ── Product image — no gradient, clean white bg ── */}
+        <div style={{ position: "relative", aspectRatio: "1/1", overflow: "hidden", background: "#fff", flexShrink: 0 }}>
+          {img
+            ? <img src={img} alt={name} loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
+            : <div style={{ position: "absolute", inset: 0, background: "#f0f0f0" }} />
+          }
+          {/* Discount badge */}
+          {isDeal && (
+            <div style={{ position: "absolute", top: 6, insetInlineEnd: 6, background: "#CC0C39", borderRadius: 3, padding: "2px 6px" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.65rem", color: "#fff" }}>-{discountPercent}%</span>
             </div>
           )}
-          {/* Discount badge (top-end) — only when no rank badge */}
-          {discountPercent && discountPercent > 0 && rank === undefined && (
-            <div style={{ position: "absolute", top: 8, insetInlineEnd: 8, background: "#CC0C39", borderRadius: "4px", padding: "2px 7px" }}>
-              <span style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "0.65rem", color: "#fff" }}>-{discountPercent}%</span>
+          {/* Rank #1 Best Seller tag */}
+          {rank === 0 && (
+            <div style={{ position: "absolute", top: 0, insetInlineStart: 0, background: "#CC8700", padding: "2px 7px" }}>
+              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.6rem", color: "#fff", letterSpacing: "0.03em" }}>#1 Best Seller</span>
             </div>
           )}
         </div>
-        {/* Info */}
-        <div style={{ padding: "0.7rem 0.85rem 0.9rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-          {category && (
-            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "9px", color: colors.dimmed, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{category}</p>
-          )}
-          <h3 style={{ fontFamily: F.sans, fontWeight: 600, fontSize: "0.82rem", color: colors.white, lineHeight: 1.45, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", flex: 1 }}>{name}</h3>
-          <div style={{ marginTop: "auto", paddingTop: "0.4rem" }}>
-            <div style={{ fontFamily: F.sans, fontWeight: 800, fontSize: "1rem", color: colors.green, letterSpacing: "-0.02em" }} translate="no">{format(price)}</div>
+        {/* ── Product info ── */}
+        <div style={{ padding: "8px 10px 12px", flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* Name */}
+          <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.82rem", color: colors.white, lineHeight: 1.4, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", flex: 1 }}>{name}</p>
+          {/* Stars */}
+          <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
+            <span style={{ fontSize: "0.75rem", letterSpacing: "-1px", lineHeight: 1 }}>
+              {Array.from({ length: 5 }, (_, i) => (
+                <span key={i} style={{ color: i < fullStars ? "#FFA41C" : (i === fullStars && halfStar ? "#FFA41C" : "#DDD") }}>
+                  {i < fullStars ? "★" : (i === fullStars && halfStar ? "★" : "☆")}
+                </span>
+              ))}
+            </span>
+            <span style={{ fontFamily: F.sans, fontSize: "0.72rem", color: colors.green, textDecoration: "underline" }}>{reviews.toLocaleString()}</span>
+          </div>
+          {/* Price */}
+          <div style={{ marginTop: 4 }}>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "1.05rem", color: priceColor }} translate="no">
+              {format(price)}
+            </span>
             {originalPrice && originalPrice > price && (
-              <div style={{ fontFamily: F.sans, fontSize: "0.7rem", color: colors.dimmed, textDecoration: "line-through", marginTop: "1px" }} translate="no">{format(originalPrice)}</div>
+              <div style={{ fontFamily: F.sans, fontSize: "0.72rem", color: colors.muted, textDecoration: "line-through" }} translate="no">
+                {format(originalPrice)}
+              </div>
             )}
+          </div>
+          {/* Prime badge (decorative) */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 2 }}>
+            <span style={{ fontFamily: F.sans, fontSize: "0.65rem", fontStyle: "italic", fontWeight: 700, color: "#00A8E0", letterSpacing: "0.02em" }}>prime</span>
+            <span style={{ fontFamily: F.sans, fontSize: "0.65rem", color: colors.muted }}>{t("home.deals.free_delivery")}</span>
           </div>
         </div>
       </div>
@@ -495,46 +544,42 @@ const AmzProductCard = memo(function AmzProductCard({
 });
 
 /* ─── Amazon-style horizontal carousel row ────────────────────────────────────
-   Uses direction:ltr on the track (RTL carousel fix) so scroll always goes
-   left→right regardless of page dir. Arrow scroll direction never flips.     */
+   Arrow buttons are large semi-transparent circles (exactly like Amazon.com).
+   direction:ltr on track fixes RTL flex axis flip (see rtl-carousel-fix.md). */
 function AmzCarouselRow({ items }: { items: CarouselProduct[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
-  const colors   = useContext(LuxColorCtx);
 
   const scroll = (dir: -1 | 1) =>
     trackRef.current?.scrollBy({ left: dir * 220, behavior: "smooth" });
 
-  const arrowStyle: React.CSSProperties = {
-    background: colors.card,
-    border: `1px solid ${colors.border}`,
-    color: colors.white,
-    fontSize: "1.15rem",
-    lineHeight: 1,
-    fontWeight: 700,
-    cursor: "pointer",
-    padding: 0,
-    userSelect: "none",
-    WebkitUserSelect: "none",
+  const arrowBtn: React.CSSProperties = {
+    position: "absolute", top: "50%", transform: "translateY(-50%)",
+    zIndex: 10, width: 40, height: 40, borderRadius: "50%",
+    background: "rgba(255,255,255,0.97)",
+    border: "1px solid #D5D9D9",
+    boxShadow: "0 2px 5px 0 rgba(15,17,17,.20)",
+    color: "#0F1111", fontSize: "1.4rem", lineHeight: 1,
+    cursor: "pointer", padding: 0,
   };
-
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <button className="amz-arrow-btn" aria-label={t("home.carousel.prev")} onClick={() => scroll(-1)} style={arrowStyle}>‹</button>
-      <div ref={trackRef} className="amz-carousel-track" style={{ flex: 1 }}>
+    <div style={{ position: "relative", padding: "0 28px" }}>
+      <button className="amz-arrow-btn" aria-label={t("home.carousel.prev")} onClick={() => scroll(-1)} style={{ ...arrowBtn, left: -4 }}>‹</button>
+      <div ref={trackRef} className="amz-carousel-track">
         {items.map((item, i) => (
           <div key={`${item.id}-${i}`} className="amz-carousel-item">
             <AmzProductCard {...item} />
           </div>
         ))}
       </div>
-      <button className="amz-arrow-btn" aria-label={t("home.carousel.next")} onClick={() => scroll(1)} style={arrowStyle}>›</button>
+      <button className="amz-arrow-btn" aria-label={t("home.carousel.next")} onClick={() => scroll(1)} style={{ ...arrowBtn, right: -4 }}>›</button>
     </div>
   );
 }
 
 /* ─── Amazon widget panel (single placard) ────────────────────────────────────
-   White card: bold title → 2×2 image sub-grid → "Shop more" link.           */
+   Exactly matches Amazon.com: bold dark title, 2×2 image+label grid,
+   blue "Shop more" link at the bottom. All on white `#FFFFFF` background.   */
 function AmzWidgetPanel({
   panel, index,
 }: {
@@ -542,50 +587,44 @@ function AmzWidgetPanel({
   index: number;
 }) {
   const { t } = useTranslation();
-  const colors = useContext(LuxColorCtx);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-20px" }}
-      transition={{ duration: 0.38, delay: index * 0.07, ease: fadeEase }}
-      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}
-    >
-      {/* Title */}
-      <div style={{ padding: "14px 14px 10px" }}>
-        <h2 style={{ fontFamily: F.naskh, fontWeight: 800, fontSize: "clamp(0.92rem,1.6vw,1.05rem)", color: colors.white, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {t(panel.titleKey)}
-        </h2>
-      </div>
+    <div style={{ background: "#FFFFFF", borderRadius: 4, display: "flex", flexDirection: "column", overflow: "hidden", padding: "14px 14px 10px" }}>
+      {/* Bold title */}
+      <h2 style={{ fontFamily: F.naskh, fontWeight: 700, fontSize: "clamp(0.9rem,1.6vw,1.05rem)", color: "#0F1111", margin: "0 0 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {t(panel.titleKey)}
+      </h2>
       {/* 2×2 image grid */}
-      <div className="amz-widget-2x2" style={{ padding: "0 8px", flex: 1 }}>
+      <div className="amz-widget-2x2" style={{ flex: 1, gap: 6 }}>
         {panel.items.map((item, i) => (
           <Link key={i} href={panel.seeAllHref} style={{ display: "block", textDecoration: "none" }}>
-            <div style={{ aspectRatio: "1/1", overflow: "hidden", borderRadius: 3, background: colors.card2 }}>
-              <img src={item.img} alt={t(item.labelKey)} loading={index === 0 && i < 2 ? "eager" : "lazy"} decoding="async"
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <div style={{ aspectRatio: "1/1", overflow: "hidden", borderRadius: 3, background: "#F0F2F2" }}>
+              <img
+                src={item.img}
+                alt={t(item.labelKey)}
+                loading={index === 0 && i < 2 ? "eager" : "lazy"}
+                decoding="async"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
             </div>
-            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "10px", color: colors.muted, margin: "3px 0 5px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "11px", color: "#0F1111", margin: "4px 0 6px", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {t(item.labelKey)}
             </p>
           </Link>
         ))}
       </div>
-      {/* "See more" footer */}
-      <div style={{ padding: "8px 14px 14px" }}>
-        <Link href={panel.seeAllHref}
-          style={{ fontFamily: F.sans, fontWeight: 500, fontSize: "0.78rem", color: colors.green, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-          {t("home.categories.see_all")} <ArrowLeft style={{ width: 11, height: 11 }} />
+      {/* "See more" link — Amazon teal */}
+      <div style={{ marginTop: 8 }}>
+        <Link href={panel.seeAllHref} style={{ fontFamily: F.sans, fontWeight: 400, fontSize: "0.8rem", color: "#007185", textDecoration: "none" }}>
+          {t("home.categories.see_all")} →
         </Link>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-/** Countdown timer for deals section */
+/** Countdown timer for deals section — Amazon red style */
 function LuxCountdownTimer() {
   const { t } = useTranslation();
-  const colors = useContext(LuxColorCtx);
   const [time, setTime] = useState({ h: 8, m: 24, s: 37 });
   useEffect(() => {
     const id = setInterval(() => {
@@ -598,16 +637,16 @@ function LuxCountdownTimer() {
     return () => clearInterval(id);
   }, []);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem" }}>
-      <Timer style={{ width: 13, height: 13, color: colors.dimmed, flexShrink: 0 }} />
-      <span style={{ fontFamily: F.sans, fontSize: "0.75rem", color: colors.dimmed }}>{t("home.deals.ends_in")}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+      <Timer style={{ width: 13, height: 13, color: "#CC0C39", flexShrink: 0 }} />
+      <span style={{ fontFamily: F.sans, fontSize: "0.75rem", color: "#565959" }}>{t("home.deals.ends_in")}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
         {[pad(time.h), pad(time.m), pad(time.s)].map((val, i) => (
-          <span key={i} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontWeight: 700, fontSize: "0.78rem", fontVariantNumeric: "tabular-nums", color: colors.white, background: colors.greenAlpha, border: `1px solid ${colors.border}`, padding: "2px 8px", borderRadius: "6px", minWidth: "2rem", textAlign: "center", letterSpacing: "0.04em" }}>
+          <span key={i} style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: "0.82rem", fontVariantNumeric: "tabular-nums", color: "#CC0C39", background: "#FFF0EE", border: "1px solid #FFBDAD", padding: "1px 6px", borderRadius: 3, minWidth: "1.8rem", textAlign: "center" }}>
               {val}
             </span>
-            {i < 2 && <span style={{ color: colors.dimmed, fontWeight: 700, fontSize: "0.8rem" }}>:</span>}
+            {i < 2 && <span style={{ color: "#CC0C39", fontWeight: 700, fontSize: "0.9rem", lineHeight: 1 }}>:</span>}
           </span>
         ))}
       </div>
@@ -685,7 +724,7 @@ const AmzWidgetSection = memo(function AmzWidgetSection() {
   const { i18n } = useTranslation();
   const colors = useContext(LuxColorCtx);
   return (
-    <section style={{ background: colors.bg, padding: "14px 0 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+    <section style={{ background: colors.bg, padding: "12px 0 0" }} dir={i18n.dir()}>
       <div className="amz-section">
         <div className="amz-widget-grid" style={{ paddingBottom: 14 }}>
           {WIDGET_PANELS.map((panel, i) => (
@@ -777,11 +816,13 @@ const LuxStoresSection = memo(function LuxStoresSection() {
   })), [stores, t]);
 
   return (
-    <section style={{ background: colors.bg, padding: "2.25rem 0", borderTop: `1px solid ${colors.border}` }} dir={i18n.dir()}>
+    <section style={{ background: colors.bg, padding: "14px 0" }} dir={i18n.dir()}>
       <div className="amz-section">
-        <AmzSectionHeader title={t("home.stores.title")} seeAllKey="home.stores.see_all" seeAllHref="/sellers/directory" />
-        <div className="amz-stores-3">
-          {displayStores.map((store, i) => <LuxStoreCard key={store.id} store={store} index={i} />)}
+        <div style={{ background: colors.card, borderRadius: 4, padding: "14px 16px 20px" }}>
+          <AmzSectionHeader title={t("home.stores.title")} seeAllKey="home.stores.see_all" seeAllHref="/sellers/directory" />
+          <div className="amz-stores-3">
+            {displayStores.map((store, i) => <LuxStoreCard key={store.id} store={store} index={i} />)}
+          </div>
         </div>
       </div>
     </section>
@@ -1351,12 +1392,14 @@ export default function LuxuryLandingPage() {
             </motion.div>
         </motion.section>
 
-        {/* ── Below-fold sections ────────────────────────────────────────── */}
-        <AmzWidgetSection />
-        <AmzDealsSection deals={hotDeals} />
-        <LuxStoresSection />
-        <AmzBestSellersSection products={trending} />
-        <AmzNewArrivalsSection products={newArrivals} />
+        {/* ── Below-fold: Amazon light theme override ──────────────────── */}
+        <LuxColorCtx.Provider value={CA as ColorTokens}>
+          <AmzWidgetSection />
+          <AmzDealsSection deals={hotDeals} />
+          <LuxStoresSection />
+          <AmzBestSellersSection products={trending} />
+          <AmzNewArrivalsSection products={newArrivals} />
+        </LuxColorCtx.Provider>
         <LuxJoinSection />
         <LuxFooterBar />
       </div>
