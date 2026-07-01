@@ -1,8 +1,9 @@
 # SYANO — Master Recovery Document
 ### سوق سوريا — Syrian Digital Marketplace
 
-**Certified:** 2026-06-22 · **Status:** ✅ FULLY OPERATIONAL  
-**Health:** `status=ok · tables=45 · products=42 · embeddings=42 · backend=sentence-transformers`
+**Certified:** 2026-07-01 · **Status:** ✅ FULLY OPERATIONAL  
+**Health:** `status=ok · tables=45 · products=42 · embeddings=42 · backend=sentence-transformers`  
+**Security Hardened:** 2026-07-01 · Parts A–D audit remediation complete (see SECURITY HARDENING section)
 
 > This is the **only** file a future agent needs to fully recover SYANO.  
 > No other file contains recovery logic. Read this first. Read nothing else first.
@@ -152,6 +153,8 @@ npx tsc --build lib/db lib/api-zod lib/api-client-react
 cd lib/db && pnpm run push-force
 ```
 
+**Notable column added 2026-07-01:** `users.password_changed_at TIMESTAMPTZ` — stores the timestamp of the last password reset. Used by `requireActiveAccount` to expire stale JWT sessions. Applied via direct SQL (`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ`) — already present in the live DB and in `lib/db/src/schema/users.ts`.
+
 **Auto-migrations:** The API server runs `src/lib/run-migrations.ts` on every boot. These are additive, idempotent, and safe to re-run. Never use DROP or ALTER existing columns.
 
 **Demo data bootstrapped on first boot (fresh DB only):**
@@ -196,18 +199,33 @@ curl -L -o artifacts/embedding-service/model/model.safetensors \
 | Method | Status | Notes |
 |---|---|---|
 | Email/Phone + Password | ✅ Active | JWT HS256, signed by `SESSION_SECRET` |
-| Google Login | ✅ Active | `GOOGLE_CLIENT_ID` only — no client secret needed |
+| Google Login | ✅ Active | `GOOGLE_CLIENT_ID` only — no client secret needed; `rememberMe=true` → 30 d token |
 | Facebook Login | ❌ Disabled | `FACEBOOK_LOGIN_ENABLED=false` |
-| Cloudflare Turnstile | ⚠️ Partial | `TURNSTILE_SITE_KEY` in shared env; needs `TURNSTILE_SECRET_KEY` in Secrets for server-side verify |
+| Cloudflare Turnstile | ✅ Active | `TURNSTILE_SITE_KEY` in shared env; `TURNSTILE_SECRET_KEY` in Secrets for server-side verify |
 | JWT storage | — | Web: `localStorage` · Mobile: `AsyncStorage` |
 
 **Roles:** Admin (Root Owner) · Seller · Courier · Customer
 
 **Admin bypass:** The admin email (`delewatiamer7@gmail.com`) bypasses role selector server-side. Do not rely on role selector for admin access.
 
-**Rate limiter:** In-memory, 10 attempts / 15 min per IP. Restart API workflow to reset during testing.
+**Token TTL:** Default 7 days. `rememberMe=true` (Google/Facebook OAuth) → 30 days. `signToken(payload, expiresIn)` in `artifacts/api-server/src/middlewares/auth.ts` accepts an optional second argument.
 
-**CORS rule (critical — do not revert):** `isReplitOrigin()` in `artifacts/api-server/src/app.ts` always allows `*.replit.dev` + `*.replit.app`. This is required for both web preview and mobile to authenticate. Removing it breaks all mobile logins.
+**Session invalidation on password change:** The `users` table has a `password_changed_at` column (added 2026-07-01). When a user resets their password, `password_changed_at` is set to `NOW()`. `requireActiveAccount` rejects any JWT whose `iat` predates `password_changed_at` with `401 SESSION_EXPIRED`. Old sessions are invalidated instantly without a token blocklist.
+
+**Rate limiters (IP-level, in-memory):**
+| Endpoint | Limit | Window |
+|---|---|---|
+| `POST /auth/login` | 10 attempts (50 in dev) | 15 minutes per IP |
+| `POST /auth/send-otp` | 5 requests | 1 hour per IP |
+| `POST /auth/register` | 5 registrations | 1 hour per IP |
+
+Source: `artifacts/api-server/src/lib/rateLimiter.ts`. Restart API workflow to reset stores during testing.
+
+**Per-user OTP rate limit:** Atomic single-`UPDATE` against the `users` table (`otp_request_count` / `otp_request_window_start`). Maximum 5 OTP sends per rolling hour per user. Enforced in `checkUserRateLimit()` in `artifacts/api-server/src/routes/auth.ts`.
+
+**CORS rule (critical — do not revert):** `isReplitOrigin()` in `artifacts/api-server/src/app.ts` always allows `*.replit.dev` + `*.replit.app`. This is required for both web preview and mobile to authenticate. Removing it breaks all mobile logins. In production, requests with no `Origin` and requests from unknown origins are denied when `CORS_ORIGIN` is not configured.
+
+**Login error codes:** Both "user not found" and "wrong password" return `INVALID_CREDENTIALS` (never distinguishes between them — prevents email enumeration).
 
 **Demo accounts:**
 | Role | Email | Password |
@@ -218,6 +236,169 @@ curl -L -o artifacts/embedding-service/model/model.safetensors \
 | Seller (dev) | seller@syano.test | Seller@2026 |
 | Courier (dev) | courier@syano.test | Courier@2026 |
 | Customer (demo) | layla@syano.test | 00Amer00 |
+
+---
+
+## SECURITY HARDENING
+
+**Audit applied:** 2026-07-01 · **All Parts A–D complete** · 0 TypeScript errors after all changes
+
+This section documents every security fix applied during the 2026-07-01 audit remediation. Future agents must not revert these changes.
+
+---
+
+### Part A — Privilege & Wallet Integrity
+
+#### A1 — Bootstrap admin no longer overwrites password on every boot
+**File:** `artifacts/api-server/src/lib/bootstrap-admin.ts`
+
+- Removed the `?? "00Amer00"` hardcoded fallback. Server now **throws on startup** if `ROOT_ADMIN_PASSWORD` is missing or under 8 characters.
+- On boot, only `role`, `accountStatus`, and `isVerified` are repaired if they drift. The `passwordHash` is **never overwritten** — the admin can safely change their password via the reset flow without the next restart reverting it.
+
+#### A2 — Wallet operations use `SELECT … FOR UPDATE`
+**File:** `artifacts/api-server/src/services/courierWalletService.ts`
+
+All four wallet mutations run inside a `BEGIN … COMMIT` transaction and lock the wallet row before reading the balance:
+
+| Function | Lock target |
+|---|---|
+| `addEarning` | `INSERT … ON CONFLICT DO NOTHING` then `SELECT … FOR UPDATE` |
+| `requestPayout` | `SELECT available_balance … FOR UPDATE` |
+| `approvePayout` | `SELECT pending_balance … FOR UPDATE` + pending-balance guard |
+| `rejectPayout` | `SELECT available_balance … FOR UPDATE` |
+
+This eliminates the double-spend race where two concurrent requests both read the same balance before either writes back.
+
+---
+
+### Part B — Input Handling & Transport Security
+
+#### B1 — Unified login error codes
+**File:** `artifacts/api-server/src/routes/auth.ts`
+
+Both "user not found" and "wrong password" now return `INVALID_CREDENTIALS`. Previously they returned distinct codes (`USER_NOT_FOUND` / `INVALID_PASSWORD`) which allowed email enumeration.
+
+#### B2 — Atomic OTP rate limit
+**File:** `artifacts/api-server/src/routes/auth.ts` → `checkUserRateLimit()`
+
+Replaced the read-check-write (SELECT → compare → UPDATE) pattern with a single conditional `UPDATE … WHERE … RETURNING`. If zero rows are returned the request is rate-limited; otherwise it is allowed. This eliminates the TOCTOU race where two concurrent requests both passed the cap check.
+
+```sql
+UPDATE users
+SET
+  otp_request_count = CASE WHEN window_expired THEN 1 ELSE otp_request_count + 1 END,
+  otp_request_window_start = CASE WHEN window_expired THEN NOW() ELSE otp_request_window_start END
+WHERE id = $userId
+  AND (window_expired OR otp_request_count < 5)
+RETURNING otp_request_count, otp_request_window_start
+```
+
+#### B3 — Password-change session invalidation
+**Files:** `lib/db/src/schema/users.ts` · `artifacts/api-server/src/routes/auth.ts` · `artifacts/api-server/src/middlewares/auth.ts`
+
+- New column `users.password_changed_at TIMESTAMPTZ` — nullable (NULL for accounts that have never reset their password).
+- `POST /auth/reset-password` sets `passwordChangedAt: new Date()` alongside the new hash.
+- `requireActiveAccount` (which already does a DB lookup) checks `iat < passwordChangedAt`. If the token was issued before the last password change it returns `401 SESSION_EXPIRED`.
+- **No token blocklist required** — the timestamp acts as a rolling revocation boundary.
+
+#### B4 — CSV formula-injection fix
+**File:** `artifacts/api-server/src/routes/admin.ts` → export handler
+
+The `escape()` helper now prepends `'` to any cell value starting with `= + - @` before wrapping in double-quotes. This prevents spreadsheet applications from interpreting exported cells as formulas.
+
+```typescript
+const escape = (v: unknown) => {
+  let s = String(v ?? "");
+  if (/^[=+\-@]/.test(s)) s = "'" + s;   // neutralize formula injection
+  return `"${s.replace(/"/g, '""')}"`;
+};
+```
+
+#### B5 — CORS production lockdown
+**File:** `artifacts/api-server/src/app.ts`
+
+The CORS middleware now distinguishes development from production:
+
+| Condition | Development | Production |
+|---|---|---|
+| No `Origin` header | ✅ Allow | ❌ Deny |
+| Replit domain (`*.replit.dev` / `*.replit.app`) | ✅ Allow | ✅ Allow |
+| Configured `CORS_ORIGIN` match | ✅ Allow | ✅ Allow |
+| Unknown origin, no `CORS_ORIGIN` set | ✅ Allow | ❌ Deny |
+
+**Do not revert** the Replit domain allowance — it is required for web preview and all mobile logins.
+
+#### B6 — Trusted IP extraction
+**File:** `artifacts/api-server/src/routes/auth.ts` → `getIp()`
+
+Replaced manual `X-Forwarded-For` parsing with `req.ip`, which Express sets correctly when `trust proxy 1` is active (configured in `app.ts`). Manual parsing of `X-Forwarded-For` allows client IP spoofing by prepending a fake IP to the header.
+
+---
+
+### Part C — Code Quality & Correctness
+
+#### C1 — Audit log failures are no longer silent
+**Files:** `artifacts/api-server/src/routes/auth.ts` · `artifacts/api-server/src/routes/admin.ts`
+
+Both `auditLog()` and `logAudit()` had empty `catch {}` blocks. They now log the error via `logger.error()` so failures surface in the Pino log stream without throwing.
+
+#### C2 — `rememberMe` wired into token TTL
+**File:** `artifacts/api-server/src/routes/auth.ts` · `artifacts/api-server/src/middlewares/auth.ts`
+
+`signToken(payload, expiresIn?)` accepts an optional `expiresIn` parameter (typed as `SignOptions["expiresIn"]`, defaulting to `"7d"`). Google and Facebook OAuth handlers pass `rememberMe ? "30d" : "7d"`.
+
+#### C3 — bcrypt cost raised to 12
+**Files:** `artifacts/api-server/src/routes/auth.ts` · `artifacts/api-server/src/services/verification.ts`
+
+All `bcrypt.hash()` calls (registration, password reset, OTP hashing) now use cost factor **12** (was 10). Cost 12 ≈ 250 ms on a modern server — appropriate for auth operations.
+
+#### C4 — Password strength requirements enforced
+**Files:** `lib/api-zod/src/generated/api.ts` · `artifacts/api-server/src/routes/auth.ts`
+
+`RegisterBody.password` and `ResetPasswordBody.password` now require:
+- Minimum 8 characters
+- At least one letter (`/[A-Za-z]/`)
+- At least one number (`/[0-9]/`)
+
+#### C5 — Stock restoration is transactional and variant-aware
+**File:** `artifacts/api-server/src/routes/admin.ts` → `PATCH /admin/orders/:id/status`
+
+When an admin cancels an order, stock is restored inside a `db.transaction()` with `SELECT … FOR UPDATE` row locks. The restoration is also variant-aware:
+
+- If the order item has a `variantId`: restores stock on `product_variants`, then syncs the parent `products.stock` to the sum of all variant stocks.
+- If no `variantId`: restores stock directly on `products`.
+
+The status update to `"cancelled"` happens inside the same transaction, ensuring stock + status are always consistent.
+
+#### C6 — OTP logging hardened
+**File:** `artifacts/api-server/src/services/verification.ts`
+
+- The Resend email confirmation log now uses `logger.info({ id })` instead of `console.log` — recipient address is never logged.
+- `logDevOTP()` (dev-mode banner) returns early with `logger.warn()` in production instead of proceeding silently, making misconfigured production environments immediately visible in logs.
+
+---
+
+### Part D — Configuration & Safety
+
+#### D3 — Register unique-constraint race mapped to 409
+**File:** `artifacts/api-server/src/routes/auth.ts`
+
+Both registration paths (verification enabled and disabled) now wrap the `INSERT INTO users` in a `try/catch`. PostgreSQL error code `23505` (unique constraint violation) is mapped to `HTTP 409 "Email already registered"`. Previously this produced an unhandled 500.
+
+#### D5 — Dev-mode OTP fallback blocked in production
+**File:** `artifacts/api-server/src/services/verification.ts`
+
+`logDevOTP()` is the fallback used when `RESEND_API_KEY` / Twilio credentials are absent. It now returns early in production (`NODE_ENV === "production"`) with a `logger.warn`, preventing silent no-op OTP delivery in production environments without credentials.
+
+---
+
+### What was intentionally NOT changed
+
+| Item | Reason |
+|---|---|
+| `noUnusedLocals` in `tsconfig.base.json` | Enabling it would produce a large number of errors across all packages. Tracked as future cleanup work. |
+| `dangerouslySetInnerHTML` in `chart.tsx` line 79 | Injects a static CSS `<style>` block built from a config object — no user input touches it. Safe as-is; a comment was added in the source. |
+| Per-request DB lookup in `requireAuth` | Adding a DB call to every `requireAuth` invocation (rather than only `requireActiveAccount`) would significantly increase p50 latency. The iat check in `requireActiveAccount` covers all sensitive mutations already. |
 
 ---
 
@@ -675,6 +856,10 @@ pnpm import:check   # Expected: PASS
 | `relation "users" does not exist` | DB schema not pushed (fresh DB) | Run STEP 5: `cd lib/db && pnpm run push-force` |
 | Blank gray map on `/courier` | Leaflet packages or CSS missing | `pnpm --filter @workspace/marketplace add leaflet react-leaflet @types/leaflet` |
 | `embeddingBackend: "tfidf-lsa"` in healthz | `model.safetensors` missing or corrupt | Download from HuggingFace (see EMBEDDINGS section) |
+| `401 SESSION_EXPIRED` on API calls after password reset | JWT predates `password_changed_at` — expected behavior | Log in again to get a fresh token |
+| `409` on register ("Email already registered") | DB unique constraint caught and mapped to 409 | User already has an account — use login or reset |
+| `429` on login / OTP / register | IP-level rate limit triggered | Wait `retryAfter` seconds (in response body); restart API workflow resets in-memory stores |
+| `500` on API boot — "ROOT_ADMIN_PASSWORD must be set" | `ROOT_ADMIN_PASSWORD` env var missing or < 8 chars | Set it in Replit Secrets tab (min 8 characters) |
 | 500 on auth routes / "Invalid Turnstile token" | `TURNSTILE_SECRET_KEY` not set | Set it in Replit Secrets tab |
 | API server binds port 5000 instead of 8080 | `PORT` env var set in shared env | Remove `PORT` from shared env; keep only `API_PORT=8080` |
 | Every mobile login fails (generic error) | CORS not allowing Replit domains | Verify `healthz.auth.corsReplitDomainsAllowed=true`; restore `isReplitOrigin()` in `artifacts/api-server/src/app.ts` |
@@ -707,20 +892,21 @@ npx tsc --noEmit -p artifacts/mobile/tsconfig.json
 
 ---
 
-## CERTIFIED STATE — 2026-06-23 (re-verified on Replit after fresh import)
+## CERTIFIED STATE — 2026-07-01 (re-verified after security hardening)
 
 | System | Status | Detail |
 |---|---|---|
 | API Server | ✅ Running | Port 8080, Express 5, 30 route files |
 | Database | ✅ 45/45 tables | PostgreSQL 16 + pgvector + pg_trgm |
 | Products | ✅ 42/42 embedded | With semantic vectors |
-| Embedding Service | ✅ Running | FastAPI port 8000, sentence-transformers, load_ms≈40549 |
+| Embedding Service | ✅ Running | FastAPI port 8000, sentence-transformers, load_ms≈15749 |
 | Marketplace Web | ✅ Running | Vite 7, React 19, Tailwind v4 |
 | Mobile App | ✅ Running | Expo 54, ~95% parity, 55 screens |
 | Search | ✅ Active | FTS + semantic RRF blend, LRU 500-entry cache |
-| Auth | ✅ Healthy | JWT HS256, CORS allows *.replit.dev + *.replit.app |
+| Auth | ✅ Hardened | JWT HS256; CORS *.replit.dev + *.replit.app; session expiry on password change; INVALID_CREDENTIALS unified; atomic OTP rate limit |
 | Turnstile | ✅ Fully active | `TURNSTILE_SECRET_KEY` set in Secrets |
-| ROOT_ADMIN_PASSWORD | ✅ Set | Admin account password bootstrapped |
+| ROOT_ADMIN_PASSWORD | ✅ Set | Min 8 chars enforced; password never reset on boot; only role/status/isVerified repaired |
+| Security audit | ✅ Parts A–D complete | A1 A2 B1 B2 B3 B4 B5 B6 C1 C2 C3 C4 C5 C6 D3 D5 all applied |
 | Maps (Leaflet) | ✅ Packages present | leaflet ^1.9.4 + react-leaflet ^5.0.0 + @types/leaflet |
 | OSRM Routing | ✅ Active | Real road routing, OSM tiles |
 | TypeScript | ✅ 0 errors | All 3 artifact packages clean (after lib build) |
@@ -728,13 +914,14 @@ npx tsc --noEmit -p artifacts/mobile/tsconfig.json
 | Python packages | ✅ Installed | numpy, fastapi, torch 2.12.1+cpu, sentence-transformers 5.6.0 (via `pip install --user` in 3 passes into `.pythonlibs`) |
 | import:check | ✅ PASS WITH WARNINGS | All critical sections green; optional RESEND_API_KEY + VAPID_PRIVATE_KEY absent (graceful fallback active) |
 
-**Import recovery notes (2026-06-23, re-verified):**
+**Recovery notes (2026-07-01, verified):**
 - On fresh import: `pnpm install --no-frozen-lockfile` is the safe command (frozen may fail if lockfile is stale)
 - Python packages: use `pip install --user` in 3 passes as documented in STEP 3 above — **NOT** `python3 -m pip install` (blocked by Replit's PEP 668 enforcement) and **NOT** `uv`/`pyproject.toml` (uv resolver fails with sentence-transformers linux markers)
 - torch MUST use `--index-url https://download.pytorch.org/whl/cpu` in Pass 2
 - DB schema: run `cd lib/db && pnpm run push-force` if fresh DB — tables created in one pass
 - Embedding service must be **restarted after** Python packages are installed to pick up sentence-transformers; without restart it stays on tfidf-lsa fallback
 - The `tools/mockup-sandbox: Component Preview Server` workflow is added automatically by Replit's canvas tool — it is managed by the platform and not counted in the 4 required workflows
+- `users.password_changed_at` column is already in the live DB and in the schema — no migration needed on fresh imports (the column is in `lib/db/src/schema/users.ts` and will be created by `push-force`)
 
 ---
 
