@@ -1012,7 +1012,7 @@ export function LuxuryNavbar() {
                           </Link>
                         </DropdownMenuItem>
                       ))}
-                      {isAdmin && adminLinks.slice(0, 4).map(l => (
+                      {isAdmin && adminLinks.slice(1, 5).map(l => (
                         <DropdownMenuItem key={l.href} asChild>
                           <Link href={l.href} className="flex items-center gap-2 cursor-pointer" style={{ fontFamily: F_SANS, fontSize: "0.8125rem", color: aDropItem, padding: "0.5rem 0.875rem" }}>
                             <l.icon style={{ height: 14, width: 14 }} /> {l.label}
