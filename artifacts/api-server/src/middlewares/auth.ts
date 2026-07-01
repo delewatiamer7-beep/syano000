@@ -1,5 +1,5 @@
 import { type Request, type Response, type NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
@@ -16,8 +16,8 @@ export interface JwtPayload {
   isVerified: boolean;
 }
 
-export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+export function signToken(payload: JwtPayload, expiresIn: SignOptions["expiresIn"] = "7d"): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -80,7 +80,7 @@ export async function requireActiveAccount(req: Request, res: Response, next: Ne
   }
   try {
     const [user] = await db
-      .select({ accountStatus: usersTable.accountStatus, role: usersTable.role })
+      .select({ accountStatus: usersTable.accountStatus, role: usersTable.role, passwordChangedAt: usersTable.passwordChangedAt })
       .from(usersTable)
       .where(eq(usersTable.id, req.user.userId));
 
@@ -91,6 +91,15 @@ export async function requireActiveAccount(req: Request, res: Response, next: Ne
         message: "Your account has been suspended. Please contact support.",
       });
       return;
+    }
+
+    // B3: Reject tokens issued before the last password change (prevents stale session abuse)
+    if (user.passwordChangedAt) {
+      const tokenIat = (req.user as unknown as { iat?: number }).iat;
+      if (tokenIat !== undefined && tokenIat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+        res.status(401).json({ error: "SESSION_EXPIRED", message: "Your session has expired. Please log in again." });
+        return;
+      }
     }
 
     if (req.user.role === "seller" && user.role !== "seller") {

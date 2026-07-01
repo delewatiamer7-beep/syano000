@@ -46,7 +46,12 @@ const VerifyResetOtpBody = z.object({
 
 const ResetPasswordBody = z.object({
   resetToken: z.string().min(1, "resetToken is required"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password too long"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password too long")
+    .regex(/[A-Za-z]/, "Password must contain at least one letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
 });
 
 const UserSettingsBody = z.object({
@@ -105,11 +110,10 @@ const VERIFICATION_ENABLED =
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getIp(req: any): string {
-  return (
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
-    req.socket?.remoteAddress ??
-    "unknown"
-  );
+  // req.ip is set by Express when trust proxy is enabled (app.ts: "trust proxy 1").
+  // This is the safe value — the reverse proxy rewrites X-Forwarded-For so it cannot
+  // be spoofed by the client when the proxy is correctly configured.
+  return (req.ip as string | undefined) ?? "unknown";
 }
 
 function formatUser(u: typeof usersTable.$inferSelect) {
@@ -148,38 +152,53 @@ async function auditLog(
     await db.insert(verificationAuditLogTable).values({
       userId, event, method, ipAddress: ip, metadata: metadata ?? null,
     });
-  } catch {}
+  } catch (e) {
+    logger.error({ err: e }, "[audit] failed to write verification audit log");
+  }
 }
 
-// Per-user OTP rate limit: 5 sends per rolling hour, tracked in DB
+// Per-user OTP rate limit: 5 sends per rolling hour — atomic single-query implementation.
+// A single conditional UPDATE replaces the previous read-check-write trio, eliminating the
+// race window where two concurrent requests could both pass the cap check.
 async function checkUserRateLimit(userId: number): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const updated = await db.execute(sql`
+    UPDATE users
+    SET
+      otp_request_count = CASE
+        WHEN otp_request_window_start IS NULL
+          OR NOW() - otp_request_window_start > INTERVAL '1 hour'
+        THEN 1
+        ELSE otp_request_count + 1
+      END,
+      otp_request_window_start = CASE
+        WHEN otp_request_window_start IS NULL
+          OR NOW() - otp_request_window_start > INTERVAL '1 hour'
+        THEN NOW()
+        ELSE otp_request_window_start
+      END
+    WHERE id = ${userId}
+      AND (
+        otp_request_window_start IS NULL
+        OR NOW() - otp_request_window_start > INTERVAL '1 hour'
+        OR otp_request_count < 5
+      )
+    RETURNING otp_request_count, otp_request_window_start
+  `);
+
+  const rows = (updated as unknown as { rows?: unknown[] }).rows ?? (updated as unknown as unknown[]);
+  if (rows.length > 0) return { allowed: true };
+
+  // Rate limited — fetch window start to compute retryAfter
   const [u] = await db
-    .select({ count: usersTable.otpRequestCount, windowStart: usersTable.otpRequestWindowStart })
+    .select({ windowStart: usersTable.otpRequestWindowStart })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
-
-  if (!u) return { allowed: false };
-
-  const now = new Date();
-  const WINDOW = 60 * 60 * 1000;
-  const MAX = 5;
-
-  if (!u.windowStart || now.getTime() - u.windowStart.getTime() > WINDOW) {
-    await db.update(usersTable)
-      .set({ otpRequestCount: 1, otpRequestWindowStart: now })
-      .where(eq(usersTable.id, userId));
-    return { allowed: true };
-  }
-
-  if (u.count >= MAX) {
-    const retryAfter = Math.ceil((WINDOW - (now.getTime() - u.windowStart.getTime())) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  await db.update(usersTable)
-    .set({ otpRequestCount: sql`${usersTable.otpRequestCount} + 1` })
-    .where(eq(usersTable.id, userId));
-  return { allowed: true };
+  const windowStart = u?.windowStart ?? new Date();
+  const retryAfter = Math.max(
+    0,
+    Math.ceil((3600 * 1000 - (Date.now() - windowStart.getTime())) / 1000)
+  );
+  return { allowed: false, retryAfter };
 }
 
 // Core: generate OTP → hash → store → send
@@ -246,14 +265,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     if (ex) { res.status(400).json({ error: "Phone number already registered" }); return; }
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
 
   if (!VERIFICATION_ENABLED) {
     // Verification disabled — create account as already verified and return a token immediately.
-    const [user] = await db.insert(usersTable)
-      .values({ email, phone, passwordHash, name: safeName, role: "customer", isVerified: true,
-                otpRequestCount: 0, otpRequestWindowStart: new Date() })
-      .returning();
+    let user: typeof usersTable.$inferSelect;
+    try {
+      [user] = await db.insert(usersTable)
+        .values({ email, phone, passwordHash, name: safeName, role: "customer", isVerified: true,
+                  otpRequestCount: 0, otpRequestWindowStart: new Date() })
+        .returning();
+    } catch (insertErr: unknown) {
+      // Map DB unique-constraint violation (23505) to a friendly 409
+      if (typeof insertErr === "object" && insertErr !== null && (insertErr as Record<string, unknown>).code === "23505") {
+        res.status(409).json({ error: "Email already registered" }); return;
+      }
+      throw insertErr;
+    }
     const token = signToken({ userId: user.id, role: user.role, email: user.email, isVerified: true });
 
     // Welcome email — fire-and-forget
@@ -283,10 +311,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const [user] = await db.insert(usersTable)
-    .values({ email, phone, passwordHash, name: safeName, role: "customer", isVerified: false,
-              otpRequestCount: 1, otpRequestWindowStart: new Date() })
-    .returning();
+  let user: typeof usersTable.$inferSelect;
+  try {
+    [user] = await db.insert(usersTable)
+      .values({ email, phone, passwordHash, name: safeName, role: "customer", isVerified: false,
+                otpRequestCount: 1, otpRequestWindowStart: new Date() })
+      .returning();
+  } catch (insertErr: unknown) {
+    if (typeof insertErr === "object" && insertErr !== null && (insertErr as Record<string, unknown>).code === "23505") {
+      res.status(409).json({ error: "Email already registered" }); return;
+    }
+    throw insertErr;
+  }
 
   // Welcome email — fire-and-forget
   if (email) {
@@ -361,10 +397,10 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     ? await db.select().from(usersTable).where(eq(usersTable.email, email))
     : await db.select().from(usersTable).where(eq(usersTable.phone, phone!));
 
-  if (!user) { res.status(401).json({ error: "USER_NOT_FOUND" }); return; }
+  if (!user) { res.status(401).json({ error: "INVALID_CREDENTIALS" }); return; }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) { res.status(401).json({ error: "INVALID_PASSWORD" }); return; }
+  if (!valid) { res.status(401).json({ error: "INVALID_CREDENTIALS" }); return; }
 
   if (user.accountStatus && user.accountStatus !== "active") {
     res.status(403).json({
@@ -767,8 +803,10 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, userId));
   if (!user) { res.status(401).json({ error: "User not found" }); return; }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.update(usersTable)
+    .set({ passwordHash, passwordChangedAt: new Date() })
+    .where(eq(usersTable.id, userId));
 
   await auditLog(userId, "password_reset", "email", getIp(req));
   res.json({ message: "Password reset successfully." });
@@ -844,7 +882,7 @@ router.post("/auth/google", async (req, res): Promise<void> => {
     res.status(400).json({ error: "idToken is required" });
     return;
   }
-  const { idToken, rememberMe } = gaResult.data;
+  const { idToken, rememberMe = false } = gaResult.data;
 
   // 1. Verify the ID token with Google's servers
   let payload: import("google-auth-library").TokenPayload;
@@ -936,12 +974,10 @@ router.post("/auth/google", async (req, res): Promise<void> => {
       ).catch(() => {});
   }
 
-  const token = signToken({
-    userId: user.id,
-    role: user.role,
-    email: user.email,
-    isVerified: true,
-  });
+  const token = signToken(
+    { userId: user.id, role: user.role, email: user.email, isVerified: true },
+    rememberMe ? "30d" : "7d",
+  );
 
   await auditLog(user.id, "google_login", "google", ip, { googleId, isNew: !existing });
 
@@ -984,7 +1020,7 @@ router.post("/auth/facebook", async (req, res): Promise<void> => {
     res.status(400).json({ error: "accessToken is required" });
     return;
   }
-  const { accessToken, rememberMe } = fbResult.data;
+  const { accessToken, rememberMe = false } = fbResult.data;
 
   // 1. Verify the access token with Facebook — ensures it belongs to our app and is valid
   let facebookId: string;
@@ -1107,12 +1143,10 @@ router.post("/auth/facebook", async (req, res): Promise<void> => {
       ).catch(() => {});
   }
 
-  const token = signToken({
-    userId: user.id,
-    role: user.role,
-    email: user.email ?? "",
-    isVerified: true,
-  });
+  const token = signToken(
+    { userId: user.id, role: user.role, email: user.email ?? "", isVerified: true },
+    rememberMe ? "30d" : "7d",
+  );
 
   await auditLog(user.id, "facebook_login", "facebook", ip, { facebookId, isNew: !existing });
 

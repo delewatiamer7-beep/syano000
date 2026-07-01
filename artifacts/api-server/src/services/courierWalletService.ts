@@ -86,12 +86,15 @@ export async function addEarning(
   try {
     await client.query("BEGIN");
 
-    // Upsert wallet
-    const walletRes = await client.query(
+    // Ensure wallet row exists, then lock it with FOR UPDATE to prevent double-spend
+    await client.query(
       `INSERT INTO courier_wallets (courier_id)
        VALUES ($1)
-       ON CONFLICT (courier_id) DO UPDATE SET updated_at = NOW()
-       RETURNING available_balance`,
+       ON CONFLICT (courier_id) DO NOTHING`,
+      [courierId],
+    );
+    const walletRes = await client.query(
+      `SELECT available_balance FROM courier_wallets WHERE courier_id = $1 FOR UPDATE`,
       [courierId],
     );
     const balanceBefore = n(walletRes.rows[0].available_balance);
@@ -140,7 +143,7 @@ export async function requestPayout(courierId: number, amount: number): Promise<
     await client.query("BEGIN");
 
     const walletRes = await client.query(
-      `SELECT available_balance FROM courier_wallets WHERE courier_id = $1`,
+      `SELECT available_balance FROM courier_wallets WHERE courier_id = $1 FOR UPDATE`,
       [courierId],
     );
     if (!walletRes.rows.length) throw new Error("Wallet not found — complete a delivery first");
@@ -212,10 +215,13 @@ export async function approvePayout(payoutId: number, adminId: number): Promise<
     const courierId = req.courier_id as number;
 
     const walletRes = await client.query(
-      `SELECT pending_balance FROM courier_wallets WHERE courier_id = $1`,
+      `SELECT pending_balance FROM courier_wallets WHERE courier_id = $1 FOR UPDATE`,
       [courierId],
     );
-    const balanceAfter = parseFloat((n(walletRes.rows[0]?.pending_balance) - amount).toFixed(2));
+    if (!walletRes.rows.length) throw new Error("Wallet not found for courier");
+    const pending = n(walletRes.rows[0].pending_balance);
+    if (amount > pending) throw new Error("Pending balance insufficient for approval");
+    const balanceAfter = parseFloat((pending - amount).toFixed(2));
 
     await client.query(
       `INSERT INTO courier_wallet_transactions
@@ -264,10 +270,11 @@ export async function rejectPayout(payoutId: number, adminId: number, reason: st
     const courierId = req.courier_id as number;
 
     const walletRes = await client.query(
-      `SELECT available_balance FROM courier_wallets WHERE courier_id = $1`,
+      `SELECT available_balance FROM courier_wallets WHERE courier_id = $1 FOR UPDATE`,
       [courierId],
     );
-    const balanceAfter = parseFloat((n(walletRes.rows[0]?.available_balance) + amount).toFixed(2));
+    if (!walletRes.rows.length) throw new Error("Wallet not found for courier");
+    const balanceAfter = parseFloat((n(walletRes.rows[0].available_balance) + amount).toFixed(2));
 
     await client.query(
       `INSERT INTO courier_wallet_transactions

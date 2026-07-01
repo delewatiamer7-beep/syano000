@@ -35,6 +35,7 @@ export const usersTable = pgTable("users", {
   resetOtpExpiresAt: timestamp("reset_otp_expires_at"),
   resetOtpAttempts: integer("reset_otp_attempts").notNull().default(0),
   resetOtpLockedUntil: timestamp("reset_otp_locked_until"),
+  passwordChangedAt: timestamp("password_changed_at"),
   googleId: text("google_id").unique(),
   facebookId: text("facebook_id").unique(),
   authProvider: text("auth_provider").notNull().default("local"),

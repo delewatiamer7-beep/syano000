@@ -22,7 +22,10 @@ export const HealthCheckResponse = zod.object({
 export const RegisterBody = zod.object({
   "email": zod.string().email().optional(),
   "phone": zod.string().min(5).optional(),
-  "password": zod.string().min(8),
+  "password": zod.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Za-z]/, "Password must contain at least one letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
   "name": zod.string().min(2),
 }).refine(d => d.email || d.phone, {
   message: "Email or phone number is required",

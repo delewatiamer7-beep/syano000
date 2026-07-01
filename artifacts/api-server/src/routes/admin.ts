@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, count, sum, desc, asc, inArray, gte, lte, lt, and, sql } from "drizzle-orm";
-import { db, pool, usersTable, productsTable, ordersTable, orderItemsTable, cartItemsTable, platformSettingsTable, adminAuditLogTable, sellerApplicationsTable, orderStatusHistoryTable, reviewsTable, deliveryZonesTable, couriersTable, courierAssignmentsTable } from "@workspace/db";
+import { logger } from "../lib/logger";
+import { db, pool, usersTable, productsTable, ordersTable, orderItemsTable, cartItemsTable, platformSettingsTable, adminAuditLogTable, sellerApplicationsTable, orderStatusHistoryTable, reviewsTable, deliveryZonesTable, couriersTable, courierAssignmentsTable, productVariantsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { createNotification, kickSseUser, bi } from "../lib/notif";
 import { z } from "zod";
@@ -77,8 +78,9 @@ async function logAudit(
       targetId,
       metadata: metadata ?? null,
     });
-  } catch {
+  } catch (e) {
     // Audit logging is best-effort — a failure here must not affect the mutation response
+    logger.error({ err: e }, "[audit] failed to write admin audit log");
   }
 }
 
@@ -804,19 +806,44 @@ router.patch("/admin/orders/:id/status", async (req, res): Promise<void> => {
     return;
   }
 
-  // Restore stock when admin cancels (stock was already reserved at checkout)
+  // Restore stock when admin cancels — variant-aware, wrapped in a transaction
   if (status === "cancelled" && existing.status !== "cancelled") {
-    const orderItems = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
-    for (const item of orderItems) {
-      const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
-      if (product) {
-        const restoredStock = product.stock + item.quantity;
-        await db.update(productsTable).set({ stock: restoredStock }).where(eq(productsTable.id, product.id));
+    await db.transaction(async (tx) => {
+      const orderItems = await tx.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+      for (const item of orderItems) {
+        if (item.variantId) {
+          // Lock and restore variant stock
+          await tx.execute(
+            sql`SELECT id FROM product_variants WHERE id = ${item.variantId} FOR UPDATE`
+          );
+          await tx.update(productVariantsTable)
+            .set({ stock: sql`${productVariantsTable.stock} + ${item.quantity}` })
+            .where(eq(productVariantsTable.id, item.variantId));
+          // Sync parent product stock to sum of variants
+          const variantStocks = await tx
+            .select({ stock: productVariantsTable.stock })
+            .from(productVariantsTable)
+            .where(eq(productVariantsTable.productId, item.productId));
+          await tx.update(productsTable)
+            .set({ stock: variantStocks.reduce((s, v) => s + v.stock, 0) })
+            .where(eq(productsTable.id, item.productId));
+        } else {
+          // Lock and restore plain product stock
+          await tx.execute(
+            sql`SELECT id FROM products WHERE id = ${item.productId} FOR UPDATE`
+          );
+          await tx.update(productsTable)
+            .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
+            .where(eq(productsTable.id, item.productId));
+        }
       }
-    }
+      await tx.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id));
+    });
+  } else {
+    await db.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id));
   }
 
-  await db.update(ordersTable).set({ status, updatedAt: new Date() }).where(eq(ordersTable.id, id));
+  // Status update already happened inside the transaction above for cancel case
 
   // Mandatory: insert status history
   await db.insert(orderStatusHistoryTable).values({
@@ -1346,7 +1373,11 @@ router.get("/admin/analytics/users", async (_req, res): Promise<void> => {
 router.get("/admin/reports/export", async (req, res): Promise<void> => {
   const type = String(req.query.type ?? "orders");
 
-  const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const escape = (v: unknown) => {
+    let s = String(v ?? "");
+    if (/^[=+\-@]/.test(s)) s = "'" + s;   // neutralize formula injection prefix
+    return `"${s.replace(/"/g, '""')}"`;
+  };
 
   if (type === "orders") {
     const rows = await db

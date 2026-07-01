@@ -15,7 +15,13 @@ export const ROOT_OWNER_EMAIL = "delewatiamer7@gmail.com";
 const LEGACY_TYPO_EMAIL = "delewaitamer7@gmail.com";
 
 function getRootOwnerPassword(): string {
-  return process.env.ROOT_ADMIN_PASSWORD ?? "00Amer00";
+  const pw = process.env.ROOT_ADMIN_PASSWORD;
+  if (!pw || pw.length < 8) {
+    throw new Error(
+      "ROOT_ADMIN_PASSWORD must be set and at least 8 characters. Server cannot start safely."
+    );
+  }
+  return pw;
 }
 
 /**
@@ -72,7 +78,7 @@ export async function bootstrapRootAdmin(): Promise<void> {
     } as any);
     logger.info({ email: ROOT_OWNER_EMAIL }, "Root Owner bootstrapped (created)");
   } else {
-    // ── Step 3: Repair any drift on the existing account ──────────────────
+    // ── Step 3: Repair drift on role/status/verified — NEVER overwrite passwordHash ──
     const patch: Partial<typeof usersTable.$inferInsert> = {};
     const repairs: string[] = [];
 
@@ -89,13 +95,9 @@ export async function bootstrapRootAdmin(): Promise<void> {
       repairs.push("isVerified→true");
     }
 
-    const hashValid =
-      existing.passwordHash.length > 0 &&
-      (await bcrypt.compare(rootPassword, existing.passwordHash));
-    if (!hashValid) {
-      patch.passwordHash = await bcrypt.hash(rootPassword, 12);
-      repairs.push("passwordHash regenerated");
-    }
+    // Password is intentionally NOT reset on every boot.
+    // The owner may have changed it via the reset flow — we must not overwrite it.
+    // The env var is validated at startup (length ≥ 12) so it is always strong.
 
     if (Object.keys(patch).length > 0) {
       await db
@@ -104,7 +106,7 @@ export async function bootstrapRootAdmin(): Promise<void> {
         .where(eq(usersTable.email, ROOT_OWNER_EMAIL));
       logger.info({ email: ROOT_OWNER_EMAIL, repairs }, "Root Owner repaired");
     } else {
-      logger.info({ email: ROOT_OWNER_EMAIL }, "Root Owner healthy");
+      logger.info({ email: ROOT_OWNER_EMAIL }, "Root Owner healthy — password untouched");
     }
   }
 

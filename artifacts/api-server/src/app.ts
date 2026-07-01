@@ -80,12 +80,17 @@ function isReplitOrigin(origin: string): boolean {
   );
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+      // Credentialed requests with no Origin (e.g. same-origin curl): allow in dev, deny in prod
+      if (!origin) return callback(null, !isProd);
+      // Replit-owned domains are always trusted (dev previews, deployed app, Expo)
       if (isReplitOrigin(origin)) return callback(null, true);
-      if (!configuredOrigins) return callback(null, true);
+      // In production: if no explicit CORS_ORIGIN configured, deny all unknown origins
+      if (!configuredOrigins) return callback(null, !isProd);
       if (configuredOrigins.includes(origin)) return callback(null, true);
       callback(null, false);
     },

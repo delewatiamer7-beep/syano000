@@ -9,7 +9,7 @@ export function generateOTP(): string {
 }
 
 export async function hashOTP(otp: string): Promise<string> {
-  return bcrypt.hash(otp, 10);
+  return bcrypt.hash(otp, 12);
 }
 
 export async function verifyOTP(otp: string, hash: string): Promise<boolean> {
@@ -23,6 +23,10 @@ export function otpExpiryDate(): Date {
 // ─── Dev-mode banner ─────────────────────────────────────────────────────────
 
 function logDevOTP(to: string, code: string, channel: "EMAIL" | "SMS"): void {
+  if (process.env.NODE_ENV === "production") {
+    logger.warn({ channel }, "[OTP] dev-mode fallback triggered in production — configure RESEND_API_KEY or TWILIO credentials");
+    return;
+  }
   logger.debug({ channel, to: to.slice(0, 44), code }, "[OTP] dev mode verification code");
 }
 
@@ -66,7 +70,7 @@ async function sendEmailReal(to: string, code: string, locale: string): Promise<
     throw new Error(`Resend error: ${text}`);
   }
   const data = await res.json() as { id?: string };
-  console.log(`[OTP] Resend email sent — id: ${data.id ?? "unknown"} → ${to}`);
+  logger.info({ id: data.id ?? "unknown" }, "[OTP] Resend email sent");
 }
 
 export async function sendEmailOTP(to: string, code: string, locale = "en"): Promise<void> {
