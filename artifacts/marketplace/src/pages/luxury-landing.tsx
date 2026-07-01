@@ -122,6 +122,29 @@ const SECTION_CSS = `
   .lux-root { text-rendering: optimizeSpeed; }
   .lux-gpu-layer { transform: translateZ(0); backface-visibility: hidden; }
 
+  /* ── Hero: responsive grid + height ───────────────────────────────────────*/
+  .lux-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 0 12px;
+    height: 60dvh;
+    min-height: 300px;
+  }
+  .lux-hero-side {
+    flex-direction: column;
+    gap: 16px;
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .lux-hero-grid { grid-template-columns: 1fr 1.6fr; gap: 14px; padding: 0 16px; height: 72dvh; }
+    .lux-hero-side-right { display: flex; }
+  }
+  @media (min-width: 1024px) {
+    .lux-hero-grid { grid-template-columns: 1fr 1.48fr 1fr; gap: 16px; padding: 0 20px; height: calc(100dvh - 3.75rem); }
+    .lux-hero-side-left { display: flex; }
+  }
+
   /* ─── Amazon-style layout utilities ────────────────────────────────────────*/
   .amz-section { max-width: 1440px; margin: 0 auto; padding: 0 12px; }
   @media (min-width: 768px) { .amz-section { padding: 0 18px; } }
@@ -1294,20 +1317,16 @@ export default function LuxuryLandingPage() {
           variants={heroContainerVariants}
           initial={reduced ? false : "hidden"}
           animate="visible"
+          className="lux-hero-grid"
           style={{
             position: "relative",
             zIndex: 0,
-            height: "calc(100dvh - 3.75rem)",
-            display: "grid",
-            gridTemplateColumns: "1fr 1.48fr 1fr",
-            gap: "16px",
-            padding: "0 20px",
             overflow: "hidden",
             background: colors.bg,
           }}
         >
             {/* LEFT — phase 1: slides down; phase 2: real flex split into two independent cards */}
-            <motion.div variants={bannerVariant} style={{ display: "flex", flexDirection: "column", gap: "16px", transform: "translateZ(0)" }}>
+            <motion.div variants={bannerVariant} className="lux-hero-side lux-hero-side-left" style={{ transform: "translateZ(0)" }}>
               {/* Top card — always present; layout prop animates real height change when sibling is added */}
               <motion.div
                 layout
@@ -1352,7 +1371,7 @@ export default function LuxuryLandingPage() {
             </motion.div>
 
             {/* RIGHT — phase 1: slides down; phase 2: real flex split into two independent cards */}
-            <motion.div variants={bannerVariant} style={{ display: "flex", flexDirection: "column", gap: "16px", transform: "translateZ(0)" }}>
+            <motion.div variants={bannerVariant} className="lux-hero-side lux-hero-side-right" style={{ transform: "translateZ(0)" }}>
               {/* Top new card — independent card, slides down from above into freed space */}
               <AnimatePresence>
                 {splitTriggered && (
@@ -1392,8 +1411,8 @@ export default function LuxuryLandingPage() {
             </motion.div>
         </motion.section>
 
-        {/* ── Below-fold: Amazon light theme override ──────────────────── */}
-        <LuxColorCtx.Provider value={CA as ColorTokens}>
+        {/* ── Below-fold: Amazon palette in light mode, dark tokens in dark mode ── */}
+        <LuxColorCtx.Provider value={resolvedTheme === "dark" ? C as ColorTokens : CA as ColorTokens}>
           <AmzWidgetSection />
           <AmzDealsSection deals={hotDeals} />
           <LuxStoresSection />
